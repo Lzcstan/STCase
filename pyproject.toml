@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "stacci"
+version = "0.1.0"
+description = ""
+authors = ["Lzcstan <lzcstan@outlook.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "~3.10"
+scipy = "1.8.1"
+numpy = "1.23.4"
+scikit-learn = "0.24.1"
+anndata = "0.9.1"
+matplotlib = "3.7.1"
+pandas = "1.5.3"
+scanpy = "1.9.3"
+torch-geometric = "2.3.0"
+torch = "1.12.1"
+torch-cluster = "1.6.0"
+torch-scatter = "2.1.0"
+torch-sparse = "0.6.16"
+torch-spline-conv = "1.2.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

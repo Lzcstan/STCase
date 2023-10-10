@@ -1,0 +1,13 @@
+name: Lzcstan
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.10.*
+  - mamba
+  - pip
+  - poetry
+  - cudatoolkit=11.3.*
+  - cudnn=8.4.1.*
+platforms:
+  - linux-64
