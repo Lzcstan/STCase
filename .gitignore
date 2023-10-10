@@ -1,0 +1,23 @@
+# Ignore Python compiled files
+__pycache__/
+*.py[cod]
+
+# Ignore build and distribution files
+datasets/
+build/
+dist/
+*.egg-info/
+generated/
+embeddings/
+results/
+model/
+tests/
+
+# Ignore temporary files
+*.swp
+*.bak
+*~
+
+# Ignore IDE and editor specific files
+.idea/
+.vscode/
