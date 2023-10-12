@@ -15,7 +15,7 @@
 
    - First install pytorch related packages
 
-     `pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113`
+   `pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113`
 
    The version of pytorch should be suitable for the version of cudatoolkit. The above command is from the pytorch official website and is the latest version that cuda 11.3 can install.
 
