@@ -2,24 +2,26 @@ import time
 import torch
 import random
 import os
-import sys
+# import sys
+import argparse
 import copy
 import pickle
 import numpy as np
 import os.path as osp
-from utils import draw_sub_type_map
-from trainer import train_model
-from data_handler import generate_data
+from .utils import draw_sub_type_map
+from .trainer import train_model
+from .data_handler import generate_data
 
 
 class Args:
-    def __init__(self, seed=42, data_name='T50_PE', time_stamp='1111_1111',
+    def __init__(self, h5_name, seed=42, data_name='T50_PE', time_stamp='1111_1111', raw_path='datasets/',
                  data_path='generated/', model_path='model/', embedding_data_path='embeddings/',
-                 result_path='results/', num_epoch=200, hidden=256, n_clusters=2, gpu=0, n_input=2048):
+                 result_path='results/', num_epoch=200, hidden=256, n_clusters=2, gpu=0, n_input=2048, k=6):
+        self.h5_name = h5_name
         self.seed = seed
         self.data_name = data_name
         self.time_stamp = time_stamp
-        self.raw_path = 'datasets/'
+        self.raw_path = raw_path
         self.data_path = data_path
         self.model_path = model_path
         self.embedding_data_path = embedding_data_path
@@ -28,6 +30,7 @@ class Args:
         self.hidden = hidden
         self.n_clusters = n_clusters
 
+        self.k = k
         self.pre_train_epoch = 30
         self.n_input = n_input
         self.n_z = self.n_input // 10
@@ -37,27 +40,32 @@ class Args:
         self.bsz = 1
         self.use_whole_gene = False
 
-def prepare(seed=42, dataset='T25_F1', num_epoch=1000, n_input=3000):
+def prepare(root, dataset_path, dataset, h5_name, generated_path='generated/', 
+            embedding_path='embeddings/', model_path='models/', result_path='results/',
+            seed=42, num_epoch=1000, n_input=3000, num_neighbor=6, gpu_id=0, use_gpu=False):
     time_stamp = time.strftime("%m%d_%H%M")
     torch.manual_seed(seed)
     random.seed(seed)
     np.random.seed(seed)
-    rootPath = os.path.dirname(sys.path[0])
-    os.chdir(rootPath)
-    # os.chdir('../..')
-    dstc_args = Args(data_name=dataset, time_stamp=time_stamp, num_epoch=num_epoch, n_input=n_input, seed=seed)
+    # rootPath = os.path.dirname(sys.path[0])
+    os.chdir(root)
+    device = gpu_id if (torch.cuda.is_available() and use_gpu) else 'cpu'
+    dstc_args = Args(h5_name, gpu=device, raw_path=dataset_path, data_path=generated_path, k=num_neighbor,
+                     embedding_data_path=embedding_path, model_path=model_path, result_path=result_path,
+                     data_name=dataset, time_stamp=time_stamp, num_epoch=num_epoch, n_input=n_input, seed=seed)
     generate_data(dstc_args)
     return dstc_args
 
-def train(dstc_args, n_nei=6, spatial_regularization_strength=3,
+def train(dstc_args, spatial_regularization_strength=3,
           target_types = ['OLG', 'ASC'],
           bad_types = ['EC']):
     meta_folder = osp.join(dstc_args.data_path, dstc_args.data_name)
     types_dic = np.loadtxt(meta_folder + '/types_dic.txt', delimiter='\t', dtype=str)
+    n_nei = args.k
     for bi_type in types_dic:
         if bi_type not in bad_types and bi_type in target_types:
             args = copy.deepcopy(dstc_args)
-            device = torch.device(args.gpu if torch.cuda.is_available() else 'cpu')
+            device = torch.device(args.gpu)
             # cell_type_indeces = np.load(meta_folder + f"/cell_type_indeces_{bi_type.replace('/', 'or')}.npy")
             method = f"{bi_type.replace('/', 'or')}_lambda_sp_re={spatial_regularization_strength}_n_epoch={args.num_epoch}_weight_DSTC_{args.n_input}_with_CCST_adj_{n_nei}_i"
             # method = f"{bi_type.replace('/', 'or')}_lambda_g={graph_regularization_strength}_weight_DSTC_{args.n_input}_with_CCST_adj_i"
@@ -110,7 +118,15 @@ def train(dstc_args, n_nei=6, spatial_regularization_strength=3,
             node_embed = np.load(args.embedding_data_path + '/spot_embed.npy') 
             draw_sub_type_map(bi_type, args.data_name, types_dic, node_embed, method, args.time_stamp, args.seed) # Debug
 
+parser = argparse.ArgumentParser(description="STACCI for CCI prediction on Spatial-Omics") # Tid: HACK
+parser.add_argument('--root', required=True, help="which root to do CCI prediction", type=str)
+parser.add_argument('--ds-dir', required=True, type=str, metavar='DATA', help='dataset directory')
+parser.add_argument('--ds-name', required=True, type=str, metavar='DATA', help='dataset name')
+parser.add_argument('--h5-name', required=True, type=str, metavar='DATA', help='h5ad file name')
+args = parser.parse_args()
 
-# Test
-args = prepare()
-train(args)
+if __name__ == '__main__':
+    # Test
+    test_args = prepare(args.root, args.ds_dir, args.ds_name, args.h5_name)
+    # test_args = prepare('../tests/', 'datasets/', 'T25_F1', 'T25_F1_1000hvg_ceco')
+    train(test_args)

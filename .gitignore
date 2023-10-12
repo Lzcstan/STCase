@@ -1,6 +1,7 @@
 # Ignore Python compiled files
 __pycache__/
 *.py[cod]
+*.whl
 
 # Ignore build and distribution files
 datasets/

@@ -7,8 +7,8 @@ from torch_geometric.data import Data
 import torch_geometric.transforms as T
 import torch_geometric
 import networkx as nx
-from utils import corruption
-from model import MyDGI, DSTCWeightEncoder
+from .utils import corruption
+from .model import MyDGI, DSTCWeightEncoder
 
 def train_model(args, data, adj, coords, attn_LRs, spatial_regularization_strength, device):
     model = MyDGI(

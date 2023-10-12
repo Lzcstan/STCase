@@ -8,7 +8,7 @@ import time
 from scipy import sparse
 import matplotlib.pyplot as plt
 from scipy.spatial import distance
-from utils import preprocess, get_feature, save_dict_to_file
+from .utils import preprocess, get_feature, save_dict_to_file
 
 
 def get_bi_type(cell_types, generated_data_fold):
@@ -128,11 +128,11 @@ def draw_bi_map(generated_data_fold):
         plt.clf()
 
 def generate_data(args):
-    data_fold = args.raw_path+args.data_name+'/'
-    generated_data_fold = args.data_path + args.data_name+'/'
+    data_fold = args.raw_path + args.data_name + '/'
+    generated_data_fold = args.data_path + args.data_name + '/'
     if not os.path.exists(generated_data_fold):
         os.makedirs(generated_data_fold)
-    adata_h5ad = sc.read_h5ad(osp.join(data_fold, 'T25_F1_1000hvg_ceco.h5ad'))
+    adata_h5ad = sc.read_h5ad(osp.join(data_fold, f'{args.h5_name}.h5ad'))
 
     adata = adata_h5ad.copy()
     adata.var = adata.var.drop('highly_variable', axis=1) if 'highly_variable' in adata.var.keys() else adata.var
@@ -154,7 +154,7 @@ def generate_data(args):
     cell_num = len(coordinates)
     adj_coo = coordinates
     edgeList = []
-    k = 6
+    k = args.k
     for sigma_num in range(100):
         print(sigma_num)
         boundary = 1e8
