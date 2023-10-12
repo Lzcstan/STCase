@@ -13,7 +13,7 @@
 
    **Don't forget to activate the env**
 
-  - First install pytorch related packages
+   - First install pytorch related packages
 
      `pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113`
 
@@ -21,7 +21,7 @@
 
    Those with different cuda versions can find the appropriate command on [this website](https://pytorch.org/get-started/previous-versions/).
 
-  - Then install torch_geometric related packages
+   - Then install torch_geometric related packages
 
    There are five torch_geometric related packages: torch_spline_conv, torch_sparse, torch_scatter, torch_cluster, pyg_lib, of which pyg_lib should be installed last.
 
