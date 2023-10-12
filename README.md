@@ -13,7 +13,7 @@
 
    **Don't forget to activate the env**
 
-   - First install pytorch related packages
+- First install pytorch related packages
 
      `pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113`
 
@@ -21,7 +21,7 @@
 
    Those with different cuda versions can find the appropriate command on [this website](https://pytorch.org/get-started/previous-versions/).
 
-   - Then install torch_geometric related packages
+- Then install torch_geometric related packages
 
    There are five torch_geometric related packages: torch_spline_conv, torch_sparse, torch_scatter, torch_cluster, pyg_lib, of which pyg_lib should be installed last.
 
@@ -59,35 +59,36 @@ After creating a new environment according to the installation instructions and 
 
 {x} represents the value of the variable x, and the four custom run result saving folders {generated_path}, {embedding_path}, {model_path}, {result_path} will be automatically created in the {root} folder.
 
-After setting up the file structure, enter the STACCI/ folder under the repository and execute the following command:
+After setting up the file structure, execute the following command:
 
 ```bash
-python pipeline.py --root {root} --ds-dir {dataset_path} --ds-name {dataset} --h5-name {h5_name}
+python test.py --root {root} --ds-dir {dataset_path} --ds-name {dataset} --h5-name {h5_name}
 ```
 
 An example command is:
 
 ```bash
-python pipeline.py --root ../tests/ --ds-dir datasets/ --ds-name T25_F1 --h5-name T25_F1_1000hvg_ceco
+python test.py --root ./tests/ --ds-dir datasets/ --ds-name T25_F1 --h5-name T25_F1_1000hvg_ceco
 ```
 
 The complete file structure of the repository including the example dataset should be as follows:
 
 ```bash
-STACCI
+STACCI/
 ├── README.md
 ├── pyproject.toml
 ├── environment.yml
 ├── .gitignore
-├── STACCI
+├── test.py
+├── STACCI/
 │   ├── __init__.py
 │   ├── data_handler.py
 │   ├── model.py
 │   ├── pipeline.py
 │   ├── trainer.py
 │   └── utils.py
-└── tests
-    └── datasets
-        └── T25_F1
+└── tests/
+    └── datasets/
+        └── T25_F1/
             └── T25_F1_1000hvg_ceco.h5ad
 ```

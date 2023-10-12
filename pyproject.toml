@@ -12,6 +12,7 @@ packages = [
 scipy = "*"
 numpy = "*"
 scikit-learn = "*"
+scikit-misc = "*"
 anndata = "*"
 matplotlib = "*"
 pandas = "*"

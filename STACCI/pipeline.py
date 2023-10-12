@@ -117,16 +117,3 @@ def train(dstc_args, spatial_regularization_strength=3,
 
             node_embed = np.load(args.embedding_data_path + '/spot_embed.npy') 
             draw_sub_type_map(bi_type, args.data_name, types_dic, node_embed, method, args.time_stamp, args.seed) # Debug
-
-parser = argparse.ArgumentParser(description="STACCI for CCI prediction on Spatial-Omics") # Tid: HACK
-parser.add_argument('--root', required=True, help="which root to do CCI prediction", type=str)
-parser.add_argument('--ds-dir', required=True, type=str, metavar='DATA', help='dataset directory')
-parser.add_argument('--ds-name', required=True, type=str, metavar='DATA', help='dataset name')
-parser.add_argument('--h5-name', required=True, type=str, metavar='DATA', help='h5ad file name')
-args = parser.parse_args()
-
-if __name__ == '__main__':
-    # Test
-    test_args = prepare(args.root, args.ds_dir, args.ds_name, args.h5_name)
-    # test_args = prepare('../tests/', 'datasets/', 'T25_F1', 'T25_F1_1000hvg_ceco')
-    train(test_args)
