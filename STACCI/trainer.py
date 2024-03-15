@@ -27,7 +27,6 @@ def train_model(args, data, adj, adj_prime, coords, y, attn_LRs, device, std_LRs
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption
     ).to(device)
-    print(model)
 
     optimizer = Adam(model.parameters(), lr=args.learning_rate)
 
@@ -81,10 +80,10 @@ def train_model(args, data, adj, adj_prime, coords, y, attn_LRs, device, std_LRs
         if (epoch + 1) % 100 == 0:
             # eva(y, pred, f">{epoch + 1}")
             print('>>> Epoch: {}, Loss: {:.5f}'.format(epoch + 1, epoch_loss))
-            print(f'>>> time: {time.time() - st:.3f}, l_sp: {l_sp.item():.4f}')
+            print(f'time: {time.time() - st:.3f}, l_sp: {l_sp.item():.4f}')
             st = time.time()
 
-    print(f'>>> Min Loss: {min_loss}')
+    print(f'Min Loss: {min_loss}')
 
     model.eval()
     model.load_state_dict(best_params)

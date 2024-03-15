@@ -91,7 +91,7 @@ def train(stcase_args):
 
             # Get data
             X = np.load(osp.join(meta_folder, 'features.npy'))
-            print('>>> X:', X.shape)
+            print(f'X: {X.shape}')
 
             with open(osp.join(meta_folder, f'adj_{n_nei}_i.pkl'), 'rb') as fp:
                 adj_0 = pickle.load(fp)
@@ -104,8 +104,8 @@ def train(stcase_args):
                     X, adj, args.seed, t, coords, meta_folder, 
                     resolution=args.reso, vis=True, eval=False
                 )
-            print(f">>> Edges in Adj for {t.replace('/', 'or')}:", len(adj.data))
-            print(f">>> Edges in Adj' for {t.replace('/', 'or')}:", len(adj_prime.data))
+            print(f"Edges in Adj for {t.replace('/', 'or')}:", len(adj.data))
+            print(f"Edges in Adj' for {t.replace('/', 'or')}:", len(adj_prime.data))
 
             attn_LRs4t, std_LRs = filter_attn_LRs(
                 attn_LRs, adj, 
@@ -115,7 +115,7 @@ def train(stcase_args):
                 attn_LRs4t, t_label, 
                 norm=args.use_norm
             )
-            print(f">>> Use {len(attn_LRs4t)} LR pairs")
+            print(f"Use {len(attn_LRs4t)} LR pairs")
             attn_LRs4t = {
                 k: torch.Tensor(v.toarray()).to(device) for k, v in attn_LRs4t.items()
             }

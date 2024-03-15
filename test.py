@@ -13,7 +13,7 @@ parser.add_argument('--bad-types', nargs='*', default=[], type=str, help="List o
 parser.add_argument('--n-nei', type=int, required=True)
 parser.add_argument('--n-clusters', type=int, default=-1)
 parser.add_argument('--alpha', type=float, default=0.0)
-parser.add_argument('--reso', type=float, default=0.5)
+parser.add_argument('--reso', type=float, default=None)
 parser.add_argument('--init', default='one', type=str, help="init weight", choices=['one', 'std', 're_sum', 'sum'])
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--use-gpu', help="use gpu acceleration", action='store_true')

@@ -236,7 +236,7 @@ def draw_default_outdir(data_folder, save_path, title, fig_name, type_txt_file_n
         line = f.readline()
     f.close() 
     n_clusters = max(cell_cluster_type_list) + 1 # start from 0
-    print('n clusters in drwaing:', n_clusters)
+    print(f'{n_clusters} clusters in drawing...')
     coordinates = np.load(data_folder + 'coordinates.npy')[id_list]
 
     sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cell_cluster_type_list, cmap='rainbow')
@@ -314,7 +314,7 @@ def filter_attn_LRs(attn_LRs, adj, cut='FULL', return_std=False):
     none_interactions = []
     all_false_interactions = []
     std_LRs = {}
-    for interaction in track(attn_LRs.keys(), description='Filtering...'):
+    for interaction in track(attn_LRs.keys(), description='>>> Filtering...'):
         attn_LR = attn_LRs[interaction].tocoo()
 
         exists_mask = np.array([check_edge_in_adj(st, ed, sts, eds) for st, ed in zip(attn_LR.row, attn_LR.col)])
@@ -351,7 +351,7 @@ def filter_attn_LRs(attn_LRs, adj, cut='FULL', return_std=False):
 def replace_attn_LRs(attn_LRs, y, norm=False): # Notion: it is possible to find that the mat for certain interaction is empty after replacing!
     none_interactions_after_replace = []
     new_dict = {}
-    for interaction in track(attn_LRs.keys(), description='Replacing...'):
+    for interaction in track(attn_LRs.keys(), description='>>> Replacing...'):
         attn_LR = attn_LRs[interaction]
         full_mat = attn_LR.toarray()
 
@@ -445,12 +445,12 @@ def get_feature(adata, deconvolution=False):
     adata.obsm['feat'] = feat
     adata.obsm['feat_a'] = feat_a    
 
-def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=5, vis=False, eval=False, resolution=None):
+def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=5, vis=False, eval=False, resolution=None): # TODO: add region col name
     data_folder = meta_folder +'/'
     if resolution != None:
-        if osp.exists(data_folder + f'pre-cluster_adj_reso={resolution}.pickle'):
-            print(f">>> Cache exisits: {data_folder + f'pre_cluster_adj_reso={resolution}.pickle'}")
-            with open(data_folder + f'pre-cluster_adj_reso={resolution}.pickle', 'rb') as file:
+        if osp.exists(data_folder + f'pre-cluster_adj_reso={resolution}.pkl'):
+            print(f">>> Cache exisits: {data_folder + f'pre_cluster_adj_reso={resolution}.pkl'}")
+            with open(data_folder + f'pre-cluster_adj_reso={resolution}.pkl', 'rb') as file:
                 prune_G = pickle.load(file)
         else:
             cell_types = pd.read_csv(data_folder + 'cell_types.csv').iloc[:, 0]
@@ -474,7 +474,7 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
 
                 coordinates = coords[type_id_list]
                 n_clusters = max(cluster_labels) + 1 # start from 0
-                print(f'>>> {n_clusters} clusters in drwaing...')
+                print(f'{n_clusters} clusters in drawing...')
                 txt_lines = [ [idx, x] for idx, x in zip(type_id_list, cluster_labels) ]
                 np.savetxt(data_folder + f"pre-cluster_{bi_type_name}_types_reso={resolution}.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
 
@@ -505,7 +505,7 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
                 adj = adj_0.copy()
             adj = adj.astype(np.float32)
             Graph_df = pd.DataFrame({'St': adj.row, 'Ed': adj.col, 'Data': adj.data})
-            print('>>> %d edges before pruning.' %Graph_df.shape[0])
+            # print('>>> %d edges before pruning.' %Graph_df.shape[0])
             # pro_labels_dict = dict(zip(list(map(int, label.index)), label)) # FIXME: change the 0 -> 0-th's idx, dict(zip(type_id_list, label))
             pro_labels_dict = dict(zip(type_id_list, label))
             for i in range(X.shape[0]):
@@ -515,15 +515,15 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
             Graph_df['Ed_label'] = Graph_df['Ed'].map(pro_labels_dict)
             # Graph_df = Graph_df.loc[(Graph_df['St_label']==Graph_df['Ed_label']) | (Graph_df['St_label'] == '-1') | (Graph_df['Ed_label'] == '-1')] # Leave the edge connecting not bi_type spot
             Graph_df = Graph_df.loc[(Graph_df['St_label']==Graph_df['Ed_label'])] # Leave only the edge in bi_type groups
-            print('>>> %d edges after pruning.' %Graph_df.shape[0])
+            # print('>>> %d edges after pruning.' %Graph_df.shape[0])
 
             prune_G = sp.coo_matrix((np.ones(Graph_df.shape[0]), (Graph_df['St'], Graph_df['Ed'])))
-            with open(data_folder + f'pre-cluster_adj_reso={resolution}.pickle', 'wb') as file:
+            with open(data_folder + f'pre-cluster_adj_reso={resolution}.pkl', 'wb') as file:
                 pickle.dump(prune_G, file)
     else:
-        if osp.exists(data_folder + f'pre-cluster_adj_{n}.pickle'):
-            print(f">>> Cache exisits: {data_folder + f'pre_cluster_adj_{n}.pickle'}")
-            with open(data_folder + f'pre-cluster_adj_{n}.pickle', 'rb') as file:
+        if osp.exists(data_folder + f'pre-cluster_adj_{n}.pkl'):
+            print(f">>> Cache exisits: {data_folder + f'pre_cluster_adj_{n}.pkl'}")
+            with open(data_folder + f'pre-cluster_adj_{n}.pkl', 'rb') as file:
                 prune_G = pickle.load(file)
         else:
             cell_types = pd.read_csv(data_folder + 'cell_types.csv').iloc[:, 0]
@@ -548,16 +548,16 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
             # Iterating using the Progress class in rich
             with Progress() as prog:
                 reso_lst_sorted = sorted(list(np.arange(increment, 1000, increment)))
-                task = prog.add_task('Getting type-aware Adj...', total=len(reso_lst_sorted))
+                task = prog.add_task('>>> Getting type-aware Adj...', total=len(reso_lst_sorted))
                 for reso in reso_lst_sorted:
                     sc.tl.louvain(adata, resolution=reso, key_added=pre_labels, random_state=seed)
                     ret_type_cnt = len(pd.DataFrame(adata.obs[pre_labels]).expression_louvain_label.unique())
                     # prog.console.print(f"ret_type_cnt={ret_type_cnt}")
                     if ret_type_cnt == n:
-                        print('>>> Resolution:', reso)
                         label = adata.obs[pre_labels]
                         break
                     prog.advance(task)
+                print('Resolution:', reso)
 
             if vis:
                 eval_reso = reso
@@ -571,7 +571,7 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
 
                 coordinates = coords[type_id_list]
                 n_clusters = max(cluster_labels) + 1 # start from 0
-                print(f'>>> {n_clusters} clusters in drwaing...')
+                print(f'{n_clusters} clusters in drawing...')
                 txt_lines = [ [idx, x] for idx, x in zip(type_id_list, cluster_labels) ]
                 np.savetxt(data_folder + f"pre-cluster_{bi_type_name}_types_{n}.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
 
@@ -602,7 +602,7 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
                 adj = adj_0.copy()
             adj = adj.astype(np.float32)
             Graph_df = pd.DataFrame({'St': adj.row, 'Ed': adj.col, 'Data': adj.data})
-            print('>>> %d edges before pruning.' %Graph_df.shape[0])
+            # print('%d edges before pruning.' %Graph_df.shape[0])
             # pro_labels_dict = dict(zip(list(map(int, label.index)), label)) # FIXME: change the 0 -> 0-th's idx, dict(zip(type_id_list, label))
             pro_labels_dict = dict(zip(type_id_list, label))
             for i in range(X.shape[0]):
@@ -612,10 +612,10 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
             Graph_df['Ed_label'] = Graph_df['Ed'].map(pro_labels_dict)
             # Graph_df = Graph_df.loc[(Graph_df['St_label']==Graph_df['Ed_label']) | (Graph_df['St_label'] == '-1') | (Graph_df['Ed_label'] == '-1')] # Leave the edge connecting not bi_type spot
             Graph_df = Graph_df.loc[(Graph_df['St_label']==Graph_df['Ed_label'])] # Leave only the edge in bi_type groups
-            print('>>> %d edges after pruning.' %Graph_df.shape[0])
+            # print('%d edges after pruning.' %Graph_df.shape[0])
 
             prune_G = sp.coo_matrix((np.ones(Graph_df.shape[0]), (Graph_df['St'], Graph_df['Ed'])))
-            with open(data_folder + f'pre-cluster_adj_{n}.pickle', 'wb') as file:
+            with open(data_folder + f'pre-cluster_adj_{n}.pkl', 'wb') as file:
                 pickle.dump(prune_G, file)
     return prune_G
 
@@ -627,7 +627,7 @@ def get_bi_type_related_adj(adj_0, y):
     new_row = []
     new_col = []
     new_data = []
-    for st, ed, e_val in track(zip(adj_0.row, adj_0.col, adj_0.data)):
+    for st, ed, e_val in track(zip(adj_0.row, adj_0.col, adj_0.data), description='>>> Selecting...'):
         if y[st] == 1 or y[ed] == 1:
             new_row.append(st)
             new_col.append(ed)

@@ -63,7 +63,7 @@ class LRWeightGraphAttentionLayer(nn.Module):
             non_zero_counts_tensor = torch.tensor(non_zero_counts).to(non_zero_counts[0].device)
             self.lambda_LRs = nn.Parameter(non_zero_counts_tensor).unsqueeze(1)
 
-        print(f">>> Initial lambda for LR pairs:\n{self.lambda_LRs}")
+        print(f"Initial LR pairs' lambda {self.lambda_LRs}")
 
         self.lr_proj = nn.Linear(in_features + hidden_features, out_features, bias=False)
         self.h_prime_norm = nn.BatchNorm1d(out_features) # XXX
