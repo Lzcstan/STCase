@@ -88,7 +88,7 @@ def train_model(args, data, adj, adj_prime, coords, y, attn_LRs, device, std_LRs
 
     model.eval()
     model.load_state_dict(best_params)
-    h, lr_weight_dict = model.encoder(data, attn_LRs, print_lambda=False)
+    h, lr_weight_dict = model.encoder(data, attn_LRs, print_lambda=True)
     embedding_save_filepath = osp.join(args.embedding_data_path, 'spot_embed.npy')
     save_dir = osp.dirname(embedding_save_filepath)
     if not osp.exists(save_dir):

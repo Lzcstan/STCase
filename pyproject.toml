@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "STACCI"
-version = "0.6.0"
+version = "0.7.0"
 description = "STACCI for STCase"
 authors = ["Lzcstan <lzcstan@outlook.com>"]
 readme = "README.md"
