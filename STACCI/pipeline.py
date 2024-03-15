@@ -31,7 +31,7 @@ def prepare_args(args):
     args.lr_cut = 20000
     args.h = 10
     args.n_input = 3000
-    args.num_epoch = 200
+    args.num_epoch = 100
     args.learning_rate = 1e-3
 
     args.use_norm = False
