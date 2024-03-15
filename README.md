@@ -1,4 +1,4 @@
-# STACCI
+# STACCI for STCase
 # Installation Instructions
 
 1. Clone the repository to your local machine and enter the repository in the command line interface.
@@ -62,13 +62,13 @@ After creating a new environment according to the installation instructions and 
 After setting up the file structure, execute the following command:
 
 ```bash
-python test.py --root {root} --ds-dir {dataset_path} --ds-name {dataset} --h5-name {h5_name}
+python test.py --root {root} --ds-dir {dataset_path} --ds-name {dataset} --h5-name {h5_name} --target-types {target_type_list} --gpu {gpu_id} [--use-gpu] --n-nei {#neighborhood} --n-clusters {#sub-regions} [--alpha {alpha}] --label-col-name {label_column_name} --region-col-name {region_column_name}
 ```
 
 An example command is:
 
 ```bash
-python test.py --root ./tests/ --ds-dir datasets/ --ds-name T25_F1 --h5-name T25_F1_1000hvg_ceco
+python test.py --root ./tests/ --ds-dir datasets/ --ds-name 10xv4_n0_v3 --h5-name 10xv4_n0_v3_stringent_self --target-types Tumor_major --gpu 1 --use-gpu --n-nei 12 --n-clusters 4 --alpha 0.75 --label-col-name cell_type --region-col-name Region
 ```
 
 The complete file structure of the repository including the example dataset should be as follows:
@@ -89,6 +89,6 @@ STACCI/
 │   └── utils.py
 └── tests/
     └── datasets/
-        └── T25_F1/
-            └── T25_F1_1000hvg_ceco.h5ad
+        └── 10xv4_n0_v3/
+            └── 10xv4_n0_v3_stringent_self.h5ad
 ```

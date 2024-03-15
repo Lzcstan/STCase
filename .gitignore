@@ -13,6 +13,7 @@ embeddings/
 results/
 model/
 tests/
+exp/
 
 # Ignore temporary files
 *.swp

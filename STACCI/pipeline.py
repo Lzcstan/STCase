@@ -2,118 +2,194 @@ import time
 import torch
 import random
 import os
-# import sys
-import argparse
 import copy
 import pickle
 import numpy as np
+import pandas as pd
 import os.path as osp
-from .utils import draw_sub_type_map
+from rich import print
 from .trainer import train_model
 from .data_handler import generate_data
+from .utils import filter_attn_LRs, replace_attn_LRs
+from .utils import draw_sub_type_map, save_dict_to_file
+from .utils import ada_get_cell_type_aware_adj, get_bi_type_related_adj
 
 
-class Args:
-    def __init__(self, h5_name, seed=42, data_name='T50_PE', time_stamp='1111_1111', raw_path='datasets/',
-                 data_path='generated/', model_path='model/', embedding_data_path='embeddings/',
-                 result_path='results/', num_epoch=200, hidden=256, n_clusters=2, gpu=0, n_input=2048, k=6):
-        self.h5_name = h5_name
-        self.seed = seed
-        self.data_name = data_name
-        self.time_stamp = time_stamp
-        self.raw_path = raw_path
-        self.data_path = data_path
-        self.model_path = model_path
-        self.embedding_data_path = embedding_data_path
-        self.result_path = result_path
-        self.num_epoch = num_epoch
-        self.hidden = hidden
-        self.n_clusters = n_clusters
+def prepare_args(args):
+    args.time_stamp = time.strftime("%m%d_%H%M")
 
-        self.k = k
-        self.pre_train_epoch = 30
-        self.n_input = n_input
-        self.n_z = self.n_input // 10
-        self.lr = 1e-3
-        self.pretrain_path = 'ae.pkl'
-        self.gpu = gpu
-        self.bsz = 1
-        self.use_whole_gene = False
+    args.raw_path = args.ds_dir
+    args.data_path = 'generated/'
+    args.model_path = 'model/'
+    args.result_path = 'result/'
+    args.embedding_data_path = 'embedding/'
+    args.data_name = args.ds_name
 
-def prepare(root, dataset_path, dataset, h5_name, generated_path='generated/', 
-            embedding_path='embeddings/', model_path='models/', result_path='results/',
-            seed=42, num_epoch=1000, n_input=3000, num_neighbor=6, gpu_id=0, use_gpu=False):
-    time_stamp = time.strftime("%m%d_%H%M")
-    torch.manual_seed(seed)
+    args.device = args.gpu if (torch.cuda.is_available() and args.use_gpu) else 'cpu'
+
+    args.seed = 0
+    args.lr_cut = 20000
+    args.h = 10
+    args.n_input = 3000
+    args.num_epoch = 1000
+    args.learning_rate = 1e-3
+
+    args.use_norm = False
+    args.use_whole_gene = False
+
+    return args
+
+def seed_everything(seed):
     random.seed(seed)
     np.random.seed(seed)
-    # rootPath = os.path.dirname(sys.path[0])
-    os.chdir(root)
-    device = gpu_id if (torch.cuda.is_available() and use_gpu) else 'cpu'
-    dstc_args = Args(h5_name, gpu=device, raw_path=dataset_path, data_path=generated_path, k=num_neighbor,
-                     embedding_data_path=embedding_path, model_path=model_path, result_path=result_path,
-                     data_name=dataset, time_stamp=time_stamp, num_epoch=num_epoch, n_input=n_input, seed=seed)
-    generate_data(dstc_args)
-    return dstc_args
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
-def train(dstc_args, spatial_regularization_strength=3,
-          target_types = ['OLG', 'ASC'],
-          bad_types = ['EC']):
-    meta_folder = osp.join(dstc_args.data_path, dstc_args.data_name)
-    types_dic = np.loadtxt(meta_folder + '/types_dic.txt', delimiter='\t', dtype=str)
-    n_nei = args.k
-    for bi_type in types_dic:
-        if bi_type not in bad_types and bi_type in target_types:
-            args = copy.deepcopy(dstc_args)
-            device = torch.device(args.gpu)
-            # cell_type_indeces = np.load(meta_folder + f"/cell_type_indeces_{bi_type.replace('/', 'or')}.npy")
-            method = f"{bi_type.replace('/', 'or')}_lambda_sp_re={spatial_regularization_strength}_n_epoch={args.num_epoch}_weight_DSTC_{args.n_input}_with_CCST_adj_{n_nei}_i"
-            # method = f"{bi_type.replace('/', 'or')}_lambda_g={graph_regularization_strength}_weight_DSTC_{args.n_input}_with_CCST_adj_i"
-            args.embedding_data_path = osp.join(args.embedding_data_path, args.data_name, method, args.time_stamp)  # Tid: out
-            args.model_path = osp.join(args.model_path, args.data_name, method)
-            args.result_path = osp.join(args.result_path, args.data_name, args.time_stamp, method)
-            if not os.path.exists(args.embedding_data_path): # Embedding dir.
+def prepare(args):
+    os.chdir(args.root)
+    stcase_args = prepare_args(args)
+    seed_everything(stcase_args.seed)
+    generate_data(stcase_args)
+    return stcase_args
+
+def train(stcase_args):
+    meta_folder = osp.join(stcase_args.data_path, stcase_args.data_name)
+    types_set = np.loadtxt(
+        osp.join(meta_folder, 'types_set.txt'), 
+        delimiter='\t', 
+        dtype=str
+    )
+    n_nei = stcase_args.n_nei
+    coords = np.load(osp.join(meta_folder, 'coordinates.npy'))
+    device = torch.device(stcase_args.device)
+    with open(
+        osp.join(meta_folder, f'lr_cell_weight_{stcase_args.lr_cut}.pkl'), # TODO
+        'rb'
+    ) as fp:
+        attn_LRs = pickle.load(fp)
+
+    print('>>> Model and Training Details')
+    print({**vars(stcase_args)})
+    for t in types_set:
+        if t not in stcase_args.bad_types and t in stcase_args.target_types:
+            print(f">>> For {t.replace('/', 'or')} spots")
+            args = copy.deepcopy(stcase_args)
+            t_label = np.load(
+                osp.join(meta_folder, f"cell_type_indeces_{t.replace('/', 'or')}.npy")
+            )
+            gene_tag = f"hvg={'FULL' if args.use_whole_gene else args.n_input}"
+            method = f"{t.replace('/', 'or')}_alpha={args.alpha}_reso={args.reso}_" + \
+                f"cut={args.lr_cut}_{gene_tag}_nei={args.n_nei}"
+            args.embedding_data_path = osp.join(
+                args.embedding_data_path, 
+                args.data_name, 
+                method, 
+                args.time_stamp
+            )  # Tid: out
+            if not osp.exists(args.embedding_data_path): # Embedding dir.
                 os.makedirs(args.embedding_data_path) 
-            if not os.path.exists(args.model_path): # Model dir.
-                os.makedirs(args.model_path) 
-            if not os.path.exists(args.result_path): # Results dir.
-                os.makedirs(args.result_path) 
-
-            print ('------------------------Model and Training Details--------------------------')
-            print({**vars(args)})
 
             # Get data
-            coords = np.load(osp.join(args.data_path, args.data_name) + '/coordinates.npy')
-            X_data = np.load(osp.join(args.data_path, args.data_name) + '/features.npy')
-            # data_folder = osp.join(args.data_path, args.data_name, 'SPACE') # Adj is generated by SPACE
-            data_folder = osp.join(args.data_path, args.data_name) # Adj is generated by CCST
-            with open(data_folder + f'/adj_{n_nei}_i', 'rb') as fp:
+            X = np.load(osp.join(meta_folder, 'features.npy'))
+            print('>>> X:', X.shape)
+
+            with open(osp.join(meta_folder, f'adj_{n_nei}_i.pkl'), 'rb') as fp:
                 adj_0 = pickle.load(fp)
-            with open(data_folder + f'/lr_cell_weight', 'rb') as fp:
-                attn_LRs = pickle.load(fp)
 
-            adj = adj_0
-
-            num_cell = X_data.shape[0]
-            num_feature = X_data.shape[1]
-            print('Adj:', adj.shape, 'Edges:', len(adj.data))
-            print('X:', X_data.shape)
-
-            # n_clusters = max(cell_type_indeces) + 1 #num_cell_types, start from 0
-
-            # print('n clusters:', n_clusters)
-
-            print("-----------DSTC-------------")
-            if 'SPACE' in data_folder:
-                adj = torch.Tensor(adj).to(device)
+            adj = get_bi_type_related_adj(adj_0, t_label)
+            if args.alpha == 0:
+                adj_prime = adj
             else:
-                adj = torch.Tensor(adj.toarray()).to(device)
-            data = torch.Tensor(X_data).to(device)
-            attn_LRs = {k: torch.Tensor(v.toarray()).to(device) for k, v in attn_LRs.items()}
+                adj_prime = ada_get_cell_type_aware_adj(
+                    X, adj, args.seed, t, coords, meta_folder, 
+                    resolution=args.reso, vis=True, eval=False
+                )
+            print(f">>> Edges in Adj for {t.replace('/', 'or')}:", len(adj.data))
+            print(f">>> Edges in Adj' for {t.replace('/', 'or')}:", len(adj_prime.data))
 
-            train_model(args, data, adj, coords, attn_LRs, spatial_regularization_strength, device)
+            attn_LRs4t, std_LRs = filter_attn_LRs(
+                attn_LRs, adj, 
+                cut=args.lr_cut, return_std=True
+            )
+            attn_LRs4t = replace_attn_LRs(
+                attn_LRs4t, t_label, 
+                norm=args.use_norm
+            )
+            print(f">>> Use {len(attn_LRs4t)} LR pairs")
+            attn_LRs4t = {
+                k: torch.Tensor(v.toarray()).to(device) for k, v in attn_LRs4t.items()
+            }
 
-            print("-----------Drawing map-------------")
+            print(">>> STCase sub-clustering...")
+            adj = torch.Tensor(adj.toarray()).to(device)
+            adj_prime = torch.Tensor(adj_prime.toarray()).to(device)
+            data = torch.Tensor(X).to(device)
 
-            node_embed = np.load(args.embedding_data_path + '/spot_embed.npy') 
-            draw_sub_type_map(bi_type, args.data_name, types_dic, node_embed, method, args.time_stamp, args.seed) # Debug
+            lr_weight_dict = train_model(
+                args, data, adj, adj_prime, coords, t_label, attn_LRs4t, 
+                device, std_LRs, alpha=args.alpha
+            )
+
+            result_path = osp.join(
+                args.result_path, args.data_name, args.time_stamp, method
+            )
+            if not osp.exists(result_path): # Results dir.
+                os.makedirs(result_path) 
+
+            save_dict_to_file(
+                lr_weight_dict, osp.join(result_path, f'lr_weight_dict.pkl')
+            )
+            lr_weight_df = pd.DataFrame(
+                zip(list(lr_weight_dict.keys()), list(lr_weight_dict.values())), 
+                columns=['lr_name', 'weight']
+            )
+            lr_weight_df['cell_type'] = t
+            lr_weight_df.to_csv(osp.join(result_path, f'lr_weight.csv'))
+
+            print(">>> Drawing map")
+
+            node_embed = np.load(osp.join(args.embedding_data_path, 'spot_embed.npy'))
+
+            if args.n_clusters != -1:
+                draw_sub_type_map(
+                    t, 
+                    args.data_name, 
+                    types_set, 
+                    node_embed, 
+                    method, 
+                    args.time_stamp, 
+                    args.seed, 
+                    fixed_clus_count=args.n_clusters, 
+                    cluster_with_fix_reso=False, 
+                    eval=not args.wo_anno,
+                    region_col_name=args.region_col_name
+                )
+                draw_sub_type_map(
+                    t, 
+                    args.data_name, 
+                    types_set, 
+                    node_embed, 
+                    method, 
+                    args.time_stamp, 
+                    args.seed, 
+                    fixed_clus_count=args.n_clusters, 
+                    cluster_method='mcluster', 
+                    cluster_with_fix_reso=False,
+                    eval=not args.wo_anno,
+                    region_col_name=args.region_col_name
+                )
+            else:
+                draw_sub_type_map(
+                    t, 
+                    args.data_name, 
+                    types_set, 
+                    node_embed, 
+                    method, 
+                    args.time_stamp, 
+                    args.seed, 
+                    cluster_with_fix_reso=True, 
+                    eval=False, 
+                    resolution=args.reso
+                )
+
+            print(method)

@@ -1,162 +1,122 @@
+import os
 import torch
 import pickle
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from sklearn.cluster import KMeans, DBSCAN, AffinityPropagation
-from sklearn import metrics
-
-
-def compare_labels(save_path, gt_labels, cluster_labels): # Tid: helper
-    # re-order cluster labels for constructing diagonal-like matrix
-    if max(gt_labels)==max(cluster_labels):
-        matrix = np.zeros([max(gt_labels)+1, max(cluster_labels)+1], dtype=int)
-        n_samples = len(cluster_labels)
-        for i in range(n_samples):
-            matrix[gt_labels[i], cluster_labels[i]] += 1
-        matrix_size = max(gt_labels)+1
-        order_seq = np.arange(matrix_size)
-        matrix = np.array(matrix)
-        #print(matrix)
-        norm_matrix = matrix/matrix.sum(1).reshape(-1,1)
-        #print(norm_matrix)
-        norm_matrix_2_arr = norm_matrix.flatten()
-        sort_index = np.argsort(-norm_matrix_2_arr)
-        #print(sort_index)
-        sort_row, sort_col = [], []
-        for tmp in sort_index:
-            sort_row.append(int(tmp/matrix_size))
-            sort_col.append(int(tmp%matrix_size))
-        sort_row = np.array(sort_row)
-        sort_col = np.array(sort_col)
-        #print(sort_row)
-        #print(sort_col)
-        done_list = []
-        for j in range(len(sort_index)):
-            if len(done_list) == matrix_size:
-                break
-            if (sort_row[j] in done_list) or (sort_col[j] in done_list):
-                continue
-            done_list.append(sort_row[j])
-            tmp = sort_col[j]
-            sort_col[sort_col == tmp] = -1
-            sort_col[sort_col == sort_row[j]] = tmp
-            sort_col[sort_col == -1] = sort_row[j]
-            order_seq[sort_row[j]], order_seq[tmp] = order_seq[tmp], order_seq[sort_row[j]]
-
-        reorder_cluster_labels = []
-        for k in cluster_labels:
-            reorder_cluster_labels.append(order_seq.tolist().index(k))
-        matrix = matrix[:, order_seq]
-        norm_matrix = norm_matrix[:, order_seq]
-        plt.imshow(norm_matrix)
-        plt.savefig(save_path + '/compare_labels_Matrix.png')
-        plt.close()
-        np.savetxt(save_path+ '/compare_labels_Matrix.txt', matrix, fmt='%3d', delimiter='\t')
-        reorder_cluster_labels = np.array(reorder_cluster_labels, dtype=int)
-
-    else:
-        print('not square matrix!!')
-        reorder_cluster_labels = cluster_labels
-    return reorder_cluster_labels
-
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-def draw_map(args, adj_0, barplot=False, title='DSTC', bi=False): # Tid: XXX
-    data_folder = args.data_path + args.data_name+'/'
-    save_path = args.result_path
-
-    print(f"Saving drew maps in {save_path}")
-
-    f = open(save_path + '/types.txt')            
-    line = f.readline() # drop the first line  
-    cell_cluster_type_list = []
-
-    while line: 
-        tmp = line.split('\t')
-        cell_id = int(tmp[0]) # index start is start from 0 here
-        #cell_type_index = int(tmp[1])
-        cell_cluster_type = int(tmp[1].replace('\n', ''))
-        cell_cluster_type_list.append(cell_cluster_type)
-        line = f.readline() 
-    f.close() 
-    n_clusters = max(cell_cluster_type_list) + 1 # start from 0
-    print('n clusters in drwaing:', n_clusters)
-    coordinates = np.load(data_folder + 'coordinates.npy')
-
-    plt.figure()
-    sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cell_cluster_type_list, cmap='viridis')
-    plt.legend(*sc_cluster.legend_elements(), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
-    plt.xticks([])
-    plt.yticks([])
-    plt.axis('scaled')
-    plt.title(title)
-    plt.savefig(save_path + '/spacial.png', dpi=400, bbox_inches='tight') 
-    plt.clf()
-
-    if bi:
-        f = open(save_path + '/bi_logits.txt')            
-        line = f.readline() # drop the first line  
-        cell_cluster_bi_logit_list = []
-
-        while line: 
-            tmp = line.split('\t')
-            cell_id = int(tmp[0]) # index start is start from 0 here
-            #cell_type_index = int(tmp[1])
-            cell_cluster_bi_logit = float(tmp[1].replace('\n', ''))
-            cell_cluster_bi_logit_list.append(cell_cluster_bi_logit)
-            line = f.readline() 
-        f.close()
-
-        plt.figure()
-        sc_heatmap = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cell_cluster_bi_logit_list, cmap='viridis')
-        # cbar = plt.colorbar(sc_heatmap)
-        # plt.colorbar()
-        plt.xticks([])
-        plt.yticks([])
-        plt.axis('scaled')
-        plt.title(title)
-        divider = make_axes_locatable(plt.gca())
-        cax = divider.append_axes("right", size="5%", pad=0.1)
-        cbar = plt.colorbar(sc_heatmap, cax=cax)
-        plt.savefig(save_path + '/heatmap.png', dpi=400, bbox_inches='tight') 
-        plt.clf()
-
-    # draw barplot
-    if barplot:
-        total_cell_num = len(cell_cluster_type_list)
-        barplot = np.zeros([n_clusters, n_clusters], dtype=int)
-        source_cluster_type_count = np.zeros(n_clusters, dtype=int)
-        p1, p2 = adj_0.nonzero()
-        def get_all_index(lst=None, item=''):
-            return [i for i in range(len(lst)) if lst[i] == item]
-
-        for i in range(total_cell_num):
-            source_cluster_type_index = cell_cluster_type_list[i]
-            edge_indeces = get_all_index(p1, item=i)
-            paired_vertices = p2[edge_indeces]
-            for j in paired_vertices:
-                neighbor_type_index = cell_cluster_type_list[j]
-                barplot[source_cluster_type_index, neighbor_type_index] += 1
-                source_cluster_type_count[source_cluster_type_index] += 1
-
-        np.savetxt(save_path + '/cluster_' + str(n_clusters) + '_barplot.txt', barplot, fmt='%3d', delimiter='\t')
-        norm_barplot = barplot/(source_cluster_type_count.reshape(-1, 1))
-        np.savetxt(save_path + '/cluster_' + str(n_clusters) + '_barplot_normalize.txt', norm_barplot, fmt='%3f', delimiter='\t')
-
-        for clusters_i in range(n_clusters):
-            plt.bar(range(n_clusters), norm_barplot[clusters_i], label='graph '+str(clusters_i))
-            plt.xlabel('cell type index')
-            plt.ylabel('value')
-            plt.title('barplot_'+str(clusters_i))
-            plt.savefig(save_path + '/barplot_sub' + str(clusters_i)+ '.jpg')
-            plt.clf()
-
-    return
-
-import os.path as osp
 import anndata as ad
-import os
+import os.path as osp
+import scipy.sparse as sp
+import matplotlib.pyplot as plt
+from rich import print
+from rich.progress import track, Progress
+from contextlib import redirect_stdout
+from scipy.sparse.csc import csc_matrix
+from scipy.sparse.csr import csr_matrix
+from scipy.optimize import linear_sum_assignment as linear
+from sklearn import metrics
+from sklearn.decomposition import PCA
+from sklearn.metrics import adjusted_rand_score as ari_score
+from sklearn.metrics.cluster import normalized_mutual_info_score as nmi_score
+
+
+def compute_matching(labels_true, labels_pred):
+    unique_labels_true = np.unique(labels_true)
+    unique_labels_pred = np.unique(labels_pred)
+
+    similarity_matrix = np.zeros((len(unique_labels_true), len(unique_labels_pred)))
+
+    for i, true_label in enumerate(unique_labels_true):
+        true_mask = labels_true == true_label
+        for j, pred_label in enumerate(unique_labels_pred):
+            pred_mask = labels_pred == pred_label
+            similarity_matrix[i, j] = np.sum(true_mask & pred_mask)
+
+    row_ind, col_ind = linear(-similarity_matrix)
+
+    label_mapping = {unique_labels_pred[col]: unique_labels_true[row] for row, col in zip(row_ind, col_ind)}
+
+    matched_labels_true = np.array([label_mapping[label] for label in labels_pred])
+
+    return similarity_matrix, matched_labels_true, label_mapping
+
+def evaluate_clustering(labels_true, labels_pred):
+    similarity_matrix, matched_labels_true, label_mapping = compute_matching(labels_true, labels_pred)
+
+    ari = ari_score(labels_true, matched_labels_true)
+    nmi = nmi_score(labels_true, matched_labels_true)
+    f1 = metrics.f1_score(labels_true, matched_labels_true, average='weighted')
+    acc = metrics.accuracy_score(labels_true, matched_labels_true)
+    # acc, f1 = cluster_acc(labels_true, matched_labels_true) # FIXME: values in labels_true may not int, but string
+
+    return similarity_matrix, matched_labels_true, label_mapping, ari, nmi, f1, acc
+
+def eva(labels_true, labels_pred, out_file=None):
+    similarity_matrix, matched_labels_true, label_mapping, ari, nmi, f1, acc = evaluate_clustering(labels_true=labels_true, labels_pred=labels_pred)
+    
+    unique_labels_true = np.unique(labels_true)
+    unique_labels_pred = np.unique(labels_pred)
+
+    if out_file:
+        with open(out_file, 'w') as f:
+            with redirect_stdout(f):
+                print(">>> Similarity Matrix:")
+                header = "\t".join([""] + [f"Pred: {label}" for label in unique_labels_pred])
+                print(header)
+                for i, true_label in enumerate(unique_labels_true):
+                    row = "\t".join([f"True: {true_label}"] + [str(similarity_matrix[i, j]) for j in range(len(unique_labels_pred))])
+                    print(row)
+
+                # print("\n>>> Matched Labels True:", matched_labels_true)
+                print(">>> Label Mapping:", label_mapping)
+                print(">>> ARI:", ari)
+                print(">>> NMI:", nmi)
+                print(">>> F1-score:", f1)
+                print(">>> Accuracy:", acc)
+    else:
+        print(">>> Similarity Matrix:")
+        header = "\t".join([""] + [f"Pred: {label}" for label in unique_labels_pred])
+        print(header)
+        for i, true_label in enumerate(unique_labels_true):
+            row = "\t".join([f"True: {true_label}"] + [str(similarity_matrix[i, j]) for j in range(len(unique_labels_pred))])
+            print(row)
+
+        # print("\n>>> Matched Labels True:", matched_labels_true)
+        print(">>> Label Mapping:", label_mapping)
+        print(">>> ARI:", ari)
+        print(">>> NMI:", nmi)
+        print(">>> F1-score:", f1)
+        print(">>> Accuracy:", acc)
+
+def mclust_R(emb_pca, num_cluster, modelNames='EEE', random_seed=2020):
+    np.random.seed(random_seed)
+    import rpy2.robjects as robjects
+    robjects.r.library("mclust")
+
+    import rpy2.robjects.numpy2ri
+    rpy2.robjects.numpy2ri.activate()
+    r_random_seed = robjects.r['set.seed']
+    r_random_seed(random_seed)
+    rmclust = robjects.r['Mclust']
+    
+    res = rmclust(rpy2.robjects.numpy2ri.numpy2rpy(emb_pca), num_cluster, modelNames)
+    mclust_res = np.array(res[-2])
+
+    ret = mclust_res
+    ret = ret.astype('int')
+    # ret = ret.astype('category')
+    return ret
+
+def clustering(emb, n_clusters=7, start=0.1, end=3.0, increment=0.01, refinement=False):
+    pca = PCA(n_components=10, random_state=42) 
+    embedding = pca.fit_transform(emb.copy())
+    emb_pca = embedding
+    
+    mclust_ret = mclust_R(emb_pca, num_cluster=n_clusters)
+    mclust_ret = mclust_ret
+
+    return mclust_ret
+
 def draw_sub_type_map(
         bi_type, 
         data_name,
@@ -165,6 +125,12 @@ def draw_sub_type_map(
         method,
         time_stamp,
         seed,
+        fixed_clus_count=3,
+        cluster_method='leiden',
+        cluster_with_fix_reso=True,
+        resolution=None,
+        eval=True,
+        region_col_name="NULL"
 ):
     # outdir=osp.join('results', data_name, time_stamp, f'SubType_{method}')
     outdir=osp.join('results', data_name, time_stamp, method)
@@ -173,44 +139,88 @@ def draw_sub_type_map(
     generated_data_fold = 'generated/' + data_name +'/'
 
     cell_types = pd.read_csv(generated_data_fold + 'cell_types.csv').iloc[:, 0]
+    if eval:
+        labels_true_full = np.array(
+            pd.read_csv(osp.join(generated_data_fold, 'regions.csv'))[region_col_name].tolist()
+        )
     increment=0.02
-    fixed_clus_count = 3
     for t in types_dic:
         if t == bi_type:
             type_id_list = cell_types[cell_types == t].index.to_list()
+            if eval:
+                labels_true = labels_true_full[type_id_list]
+            if cluster_method == 'leiden':
+                if resolution == None:
+                    # Fixed subtype number
+                    adata = ad.AnnData(node_embed[type_id_list])
+                    sc.pp.neighbors(adata, n_neighbors=20, n_pcs=0, key_added='SPACE', random_state=seed)
+                    for res in sorted(list(np.arange(0.02, 5, increment)), reverse=True):
+                        sc.tl.leiden(adata, resolution=res, neighbors_key='SPACE', random_state=seed)
+                        count_unique_leiden = len(pd.DataFrame(adata.obs['leiden']).leiden.unique())
+                        if count_unique_leiden == fixed_clus_count:
+                            print('Resolution:', res)
+                            break
+                    eval_resolution = res
+                    sc.tl.leiden(adata, key_added="leiden", neighbors_key='SPACE', resolution=eval_resolution, random_state=seed)
+                    sc.tl.umap(adata, neighbors_key='SPACE', random_state=seed)
+                    cluster_labels = np.array(adata.obs['leiden'])
+                    txt_lines = [ [idx, int(x)] for idx, x in zip(type_id_list, cluster_labels) ]
+                    np.savetxt(outdir + f"/fixed_n={fixed_clus_count}_{t.replace('/', 'or')}_types.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
+                    draw_default_outdir(generated_data_fold, outdir, f"SPACE_{t}", f"fixed_n={fixed_clus_count}_spatial_{t.replace('/', 'or')}", f"/fixed_n={fixed_clus_count}_{t.replace('/', 'or')}_types.txt")
 
-            # Fixed subtype number
-            adata = ad.AnnData(node_embed[type_id_list])
-            sc.pp.neighbors(adata, n_neighbors=20, n_pcs=10, key_added='SPACE', random_state=seed)
-            for res in sorted(list(np.arange(0.02, 5, increment)), reverse=True):
-                sc.tl.leiden(adata, resolution=res, neighbors_key='SPACE', random_state=seed)
-                count_unique_leiden = len(pd.DataFrame(adata.obs['leiden']).leiden.unique())
-                if count_unique_leiden == fixed_clus_count:
-                    print('Resolution:', res)
-                    break
-            eval_resolution = res
-            sc.tl.leiden(adata, key_added="leiden", neighbors_key='SPACE', resolution=eval_resolution, random_state=seed)
-            sc.tl.umap(adata, neighbors_key='SPACE', random_state=seed)
-            cluster_labels = np.array(adata.obs['leiden'])
-            cluster_labels = [ [idx, int(x)] for idx, x in zip(type_id_list, cluster_labels) ]
-            np.savetxt(outdir + f"/fixed_n_{t.replace('/', 'or')}_types.txt", np.array(cluster_labels), fmt='%3d', delimiter='\t')
-            draw_default_outdir(generated_data_fold, outdir, f"SPACE_{t}", f"fixed_n_spatial_{t.replace('/', 'or')}", f"/fixed_n_{t.replace('/', 'or')}_types.txt")
+                    if eval:
+                        labels_pred = [label for idx, label in txt_lines]
+                        eva(labels_true, labels_pred, out_file=osp.join(outdir, 'leiden.txt'))
 
-            # Fixed leiden resolution
-            adata = ad.AnnData(node_embed[type_id_list])
-            sc.pp.neighbors(adata, n_neighbors=20, n_pcs=10, key_added='SPACE', random_state=seed)
-            eval_resolution = 1
-            sc.tl.leiden(adata, key_added="leiden", neighbors_key='SPACE', resolution=eval_resolution, random_state=seed)
-            sc.tl.umap(adata, neighbors_key='SPACE', random_state=seed)
-            cluster_labels = np.array(adata.obs['leiden'])
-            cluster_labels = [ [idx, int(x)] for idx, x in zip(type_id_list, cluster_labels) ]
-            np.savetxt(outdir + f"/fixed_reso_{t.replace('/', 'or')}_types.txt", np.array(cluster_labels), fmt='%3d', delimiter='\t')
-            draw_default_outdir(generated_data_fold, outdir, f"SPACE_{t}", f"fixed_reso_spatial_{t.replace('/', 'or')}", f"/fixed_reso_{t.replace('/', 'or')}_types.txt")
+                if cluster_with_fix_reso:
+                    # Fixed leiden resolution
+                    adata = ad.AnnData(node_embed[type_id_list])
+                    sc.pp.neighbors(adata, n_neighbors=20, n_pcs=0, key_added='SPACE', random_state=seed)
+                    eval_resolution = 1 if resolution == None else resolution
+                    sc.tl.leiden(adata, key_added="leiden", neighbors_key='SPACE', resolution=eval_resolution, random_state=seed)
+                    sc.tl.umap(adata, neighbors_key='SPACE', random_state=seed)
+                    cluster_labels = np.array(adata.obs['leiden'])
+                    txt_lines = [ [idx, int(x)] for idx, x in zip(type_id_list, cluster_labels) ]
+                    np.savetxt(outdir + f"/fixed_reso={eval_resolution}_{t.replace('/', 'or')}_types.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
+                    draw_default_outdir(generated_data_fold, outdir, f"SPACE_{t}", f"fixed_reso={eval_resolution}_spatial_{t.replace('/', 'or')}", f"/fixed_reso={eval_resolution}_{t.replace('/', 'or')}_types.txt")
 
+                    if eval:
+                        labels_pred = [label for idx, label in txt_lines]
+                        eva(labels_true, labels_pred, out_file=osp.join(outdir, f'leiden_reso={eval_resolution}.txt'))
+
+            elif cluster_method == 'mcluster':
+                emb = node_embed[type_id_list]
+                ret = clustering(emb, n_clusters=fixed_clus_count)
+                cell_cluster_type_list = ret - 1
+                n_clusters = max(ret)
+                title = f"SPACE_{t}_mcluster"
+                coordinates = np.load(generated_data_fold + 'coordinates.npy')[type_id_list]
+
+                txt_lines = [ [idx, int(x)] for idx, x in zip(type_id_list, cell_cluster_type_list) ]
+                np.savetxt(outdir + f"/mcluster_fixed_n_{t.replace('/', 'or')}_types.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
+
+                sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cell_cluster_type_list, cmap='rainbow')
+                if n_clusters <= 3:
+                    plt.legend(*sc_cluster.legend_elements(), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                else:
+                    plt.legend(*sc_cluster.legend_elements(num=n_clusters), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                #cb_cluster = plt.colorbar(sc_cluster, boundaries=np.arange(n_types+1)-0.5).set_ticks(np.arange(n_types))    
+                plt.xticks([])
+                plt.yticks([])
+                plt.axis('scaled')
+                #plt.xlabel('X')
+                #plt.ylabel('Y')
+                plt.title(f'{title}')
+                plt.savefig(outdir + f"/mcluster_fixed_n_spatial_{t.replace('/', 'or')}.png", dpi=400, bbox_inches='tight') 
+                plt.clf()
+                
+                if eval:
+                    labels_pred = cell_cluster_type_list # TODO: can be saved with type_id_list
+                    eva(labels_true, labels_pred, out_file=osp.join(outdir, 'mcluster.txt'))
+            else:
+                pass
 
 def draw_default_outdir(data_folder, save_path, title, fig_name, type_txt_file_name):
-    # print(f"Saving drew maps in {save_path}")
-
     f = open(save_path + f'/types.txt') if type_txt_file_name is None else open(save_path + type_txt_file_name)           
     line = f.readline() # drop the first line  
     cell_cluster_type_list = []
@@ -223,7 +233,7 @@ def draw_default_outdir(data_folder, save_path, title, fig_name, type_txt_file_n
         #cell_type_index = int(tmp[1])
         cell_cluster_type = int(tmp[1].replace('\n', ''))
         cell_cluster_type_list.append(cell_cluster_type)
-        line = f.readline() 
+        line = f.readline()
     f.close() 
     n_clusters = max(cell_cluster_type_list) + 1 # start from 0
     print('n clusters in drwaing:', n_clusters)
@@ -238,39 +248,146 @@ def draw_default_outdir(data_folder, save_path, title, fig_name, type_txt_file_n
     plt.xticks([])
     plt.yticks([])
     plt.axis('scaled')
-    #plt.xlabel('X')
-    #plt.ylabel('Y')
     plt.title(f'{title}')
     plt.savefig(save_path + f'/{fig_name}.png', dpi=400, bbox_inches='tight') 
     plt.clf()
 
-import scipy.sparse as sp
-def get_cell_type_aware_adj(X, adj_0, reso=0.2):
-    adata = ad.AnnData(X)
-    if not sp.isspmatrix_coo(adj_0):
-        adj = adj_0.tocoo()
-    else:
-        adj = adj_0.copy()
-    adj = adj.astype(np.float32)
-    Graph_df = pd.DataFrame({'St': adj.row, 'Ed': adj.col, 'Data': adj.data})
+def find_range(nums, target):
+    left = 0
+    right = len(nums) - 1
+    start = -1
+    end = -1
 
-    print('------Pre-clustering using louvain with resolution=%.2f' %reso)
-    sc.tl.pca(adata, svd_solver='arpack')
-    sc.pp.neighbors(adata)
-    pre_labels = 'expression_louvain_label'
-    sc.tl.louvain(adata, resolution=reso, key_added='expression_louvain_label')
-    label = adata.obs[pre_labels]
+    while left <= right:
+        mid = (left + right) // 2
 
-    print('------Pruning the graph...')
-    print('%d edges before pruning.' %Graph_df.shape[0])
-    pro_labels_dict = dict(zip(list(map(int, label.index)), label))
-    Graph_df['St_label'] = Graph_df['St'].map(pro_labels_dict)
-    Graph_df['Ed_label'] = Graph_df['Ed'].map(pro_labels_dict)
-    Graph_df = Graph_df.loc[Graph_df['St_label']==Graph_df['Ed_label'],]
-    print('%d edges after pruning.' %Graph_df.shape[0])
+        if nums[mid] == target:
+            # 找到目标值，继续向左和向右搜索范围
+            start = find_start(nums, target, left, mid)
+            end = find_end(nums, target, mid, right)
+            break
+        elif nums[mid] > target:
+            right = mid - 1
+        else:
+            left = mid + 1
 
-    prune_G = sp.coo_matrix((np.ones(Graph_df.shape[0]), (Graph_df['St'], Graph_df['Ed'])))
-    return prune_G
+    return [start, end]
+
+def find_start(nums, target, left, right):
+    index = -1
+
+    while left <= right:
+        mid = (left + right) // 2
+
+        if nums[mid] == target:
+            index = mid
+            right = mid - 1
+        else:
+            left = mid + 1
+
+    return index
+
+def find_end(nums, target, left, right):
+    index = -1
+
+    while left <= right:
+        mid = (left + right) // 2
+
+        if nums[mid] == target:
+            index = mid
+            left = mid + 1
+        else:
+            right = mid - 1
+
+    return index
+
+def check_edge_in_adj(st, ed, sts, eds):
+    st_st, st_ed = find_range(sts, st)
+    if st_st == -1:
+        return False
+    if find_range(eds[st_st: st_ed], ed)[0] == -1:
+        return False
+    return True
+
+def filter_attn_LRs(attn_LRs, adj, cut=1000, return_std=False):
+    sts, eds = adj.row, adj.col
+    none_interactions = []
+    all_false_interactions = []
+    std_LRs = {}
+    for interaction in track(attn_LRs.keys(), description='Filtering...'):
+        attn_LR = attn_LRs[interaction].tocoo()
+
+        exists_mask = np.array([check_edge_in_adj(st, ed, sts, eds) for st, ed in zip(attn_LR.row, attn_LR.col)])
+
+        if len(exists_mask) == 0:
+            none_interactions.append(interaction)
+            # std_LRs[interaction] = 0 # XXX: Should not assign if want to filter the voage interaction
+            continue
+
+        if not any(exists_mask):
+            all_false_interactions.append(interaction)
+            # std_LRs[interaction] = 0 # XXX: Should not assign if want to filter the voage interaction
+            continue
+
+        attn_LR_data_filtered = attn_LR.data[exists_mask]
+        std_LRs[interaction] = np.std(np.concatenate([
+            attn_LR_data_filtered, 
+            np.zeros(adj.nnz - len(attn_LR_data_filtered))
+        ]))
+    print(f"#Interaction without edges={len(none_interactions)}")
+    print(f"#Interaction without std={len(all_false_interactions)}")
+
+    ret_dict = dict(sorted(std_LRs.items(), key=lambda x: x[1], reverse=True)[:cut])
+    cut_attn_LRs = {key: attn_LRs[key].tocoo() for key in ret_dict.keys()}
+
+    if return_std:
+        return cut_attn_LRs, ret_dict
+    return cut_attn_LRs
+
+def replace_attn_LRs(attn_LRs, y, norm=False): # Notion: it is possible to find that the mat for certain interaction is empty after replacing!
+    none_interactions_after_replace = []
+    new_dict = {}
+    for interaction in track(attn_LRs.keys(), description='Replacing...'):
+        attn_LR = attn_LRs[interaction]
+        full_mat = attn_LR.toarray()
+
+        min_val = float('inf')  # 初始化min_val为正无穷大
+        max_val = float('-inf')  # 初始化max_val为负无穷大
+        new_data = []
+        for st, ed, e_val in zip(attn_LR.row, attn_LR.col, attn_LR.data):
+            if y[st] == 1 and y[ed] == 0:
+                new_val = full_mat[ed, st]
+            else:
+                new_val = e_val
+            new_data.append(new_val)
+            min_val = min(min_val, e_val)  # 更新最小值
+            max_val = max(max_val, e_val)  # 更新最大值
+        
+        if len(new_data) == 0 or (max_val == 0 and min_val == 0): # If no edges or all zero, skip
+            none_interactions_after_replace.append(interaction)
+            continue
+        if norm:
+            if max_val != min_val:
+                new_data = (np.array(new_data) - min_val) / (max_val - min_val)
+            else: # if all the values of edges are the same, set them one
+                new_data = np.ones_like(np.array(new_data))
+        new_dict[interaction] = sp.coo_matrix((new_data, (attn_LR.row, attn_LR.col)), shape=attn_LR.shape, dtype=attn_LR.dtype)
+    print(f"#Interaction without edges after replacing={len(none_interactions_after_replace)}")
+    return new_dict              
+
+def _confirm_coo_mat(lst):
+    if sp.isspmatrix(lst):
+        return lst.tocoo()
+    if not isinstance(lst, np.ndarray):
+        lst = np.array(lst)
+    return sp.coo_matrix(lst)
+
+def _confirm_np_array(lst):
+    if sp.isspmatrix(lst):
+        return lst.toarray()
+    if not isinstance(lst, np.ndarray):
+        lst = np.array(lst)
+    return lst
 
 def sparse_mx_to_torch_edge_list(sparse_mx):
     sparse_mx = sparse_mx.tocoo().astype(np.float32)
@@ -292,48 +409,6 @@ def load_dict_from_file(filename):
         dictionary = pickle.load(file)
     return dictionary
 
-
-import os
-import ot
-import torch
-import random
-import numpy as np
-import scanpy as sc
-import scipy.sparse as sp
-from torch.backends import cudnn
-#from scipy.sparse import issparse
-from scipy.sparse.csc import csc_matrix
-from scipy.sparse.csr import csr_matrix
-from sklearn.neighbors import NearestNeighbors 
-
-def filter_with_overlap_gene(adata, adata_sc):
-    # remove all-zero-valued genes
-    #sc.pp.filter_genes(adata, min_cells=1)
-    #sc.pp.filter_genes(adata_sc, min_cells=1)
-    
-    if 'highly_variable' not in adata.var.keys():
-       raise ValueError("'highly_variable' are not existed in adata!")
-    else:    
-       adata = adata[:, adata.var['highly_variable']]
-       
-    if 'highly_variable' not in adata_sc.var.keys():
-       raise ValueError("'highly_variable' are not existed in adata_sc!")
-    else:    
-       adata_sc = adata_sc[:, adata_sc.var['highly_variable']]   
-
-    # Refine `marker_genes` so that they are shared by both adatas
-    genes = list(set(adata.var.index) & set(adata_sc.var.index))
-    genes.sort()
-    print('Number of overlap genes:', len(genes))
-
-    adata.uns["overlap_genes"] = genes
-    adata_sc.uns["overlap_genes"] = genes
-    
-    adata = adata[:, genes]
-    adata_sc = adata_sc[:, genes]
-    
-    return adata, adata_sc
-
 def permutation(feature):
     # fix_seed(FLAGS.random_seed) 
     ids = np.arange(feature.shape[0])
@@ -342,54 +417,6 @@ def permutation(feature):
     
     return feature_permutated 
 
-def construct_interaction(adata, n_neighbors=3):
-    """Constructing spot-to-spot interactive graph"""
-    position = adata.obsm['spatial']
-    
-    # calculate distance matrix
-    distance_matrix = ot.dist(position, position, metric='euclidean')
-    n_spot = distance_matrix.shape[0]
-    
-    adata.obsm['distance_matrix'] = distance_matrix
-    
-    # find k-nearest neighbors
-    interaction = np.zeros([n_spot, n_spot])  
-    for i in range(n_spot):
-        vec = distance_matrix[i, :]
-        distance = vec.argsort()
-        for t in range(1, n_neighbors + 1):
-            y = distance[t]
-            interaction[i, y] = 1
-         
-    adata.obsm['graph_neigh'] = interaction
-    
-    #transform adj to symmetrical adj
-    adj = interaction
-    adj = adj + adj.T
-    adj = np.where(adj>1, 1, adj)
-    
-    adata.obsm['adj'] = adj
-    
-def construct_interaction_KNN(adata, n_neighbors=3):
-    position = adata.obsm['spatial']
-    n_spot = position.shape[0]
-    nbrs = NearestNeighbors(n_neighbors=n_neighbors+1).fit(position)  
-    _ , indices = nbrs.kneighbors(position)
-    x = indices[:, 0].repeat(n_neighbors)
-    y = indices[:, 1:].flatten()
-    interaction = np.zeros([n_spot, n_spot])
-    interaction[x, y] = 1
-    
-    adata.obsm['graph_neigh'] = interaction
-    
-    #transform adj to symmetrical adj
-    adj = interaction
-    adj = adj + adj.T
-    adj = np.where(adj>1, 1, adj)
-    
-    adata.obsm['adj'] = adj
-    print('Graph constructed!')   
-
 def preprocess(adata, n_top_genes=3000, get_highly_vars=True):
     if get_highly_vars:
         sc.pp.highly_variable_genes(adata, flavor="seurat_v3", n_top_genes=n_top_genes)
@@ -397,126 +424,209 @@ def preprocess(adata, n_top_genes=3000, get_highly_vars=True):
     sc.pp.log1p(adata)
     sc.pp.scale(adata, zero_center=False, max_value=10)
 
-import time
-import os.path as osp
-import pickle
-from scipy import sparse
-def get_adj(generated_data_fold, thresholds):
-    coordinates = np.load(generated_data_fold + 'coordinates.npy')
-    if not os.path.exists(generated_data_fold):
-        os.makedirs(generated_data_fold) 
-    ############# get batch adjacent matrix
-    cell_num = len(coordinates)
-
-    ############ the distribution of distance 
-    if not osp.exists(generated_data_fold + 'distance_array.npy'):
-        distance_list = []
-        print ('calculating distance matrix, it takes a while')
-        st = time.time()
-
-        distance_list = []
-        for j in range(cell_num):
-            for i in range (cell_num):
-                if i!=j:
-                    distance_list.append(np.linalg.norm(coordinates[j]-coordinates[i]))
-
-        distance_array = np.array(distance_list)
-        np.save(generated_data_fold + 'distance_array.npy', distance_array)
-        print(f'Total time: {time.time() - st}s.')
-    else:
-        distance_array = np.load(generated_data_fold + 'distance_array.npy')
-
-    ###try different distance thrdescribeold, so that on average, each cell has x neighbor cells, see Tab. S1 for results
-
-    for threshold in thresholds:
-        num_big = np.where(distance_array<threshold)[0].shape[0]
-        print (threshold,num_big,str(num_big/(cell_num*2))) #300 22064 2.9046866771985256
-        from sklearn.metrics.pairwise import euclidean_distances
-
-        distance_matrix = euclidean_distances(coordinates, coordinates)
-        distance_matrix_threshold_I = np.zeros(distance_matrix.shape)
-        distance_matrix_threshold_W = np.zeros(distance_matrix.shape)
-        for i in range(distance_matrix_threshold_I.shape[0]):
-            for j in range(distance_matrix_threshold_I.shape[1]):
-                if distance_matrix[i,j] <= threshold and distance_matrix[i,j] > 0:
-                    distance_matrix_threshold_I[i,j] = 1
-                    distance_matrix_threshold_W[i,j] = distance_matrix[i,j]
-
-        ############### get normalized sparse adjacent matrix
-        distance_matrix_threshold_W_N = np.float32(distance_matrix_threshold_W) ## do not normalize adjcent matrix
-        # # normalize the distance matrix using min-max normalization
-        # max_val = np.max(distance_matrix_threshold_W_N)
-        # print(max_val)
-        # distance_matrix_threshold_W_N = distance_matrix_threshold_W_N / max_val
-        distance_matrix_threshold_W_N_crs = sparse.csr_matrix(distance_matrix_threshold_W_N)
-        with open(generated_data_fold + f'Adjacent', 'wb') as fp:
-            pickle.dump(distance_matrix_threshold_W_N_crs, fp)
-    
 def get_feature(adata, deconvolution=False):
     if deconvolution:
-       adata_Vars = adata
+       adata_vars = adata
     else:   
-       adata_Vars =  adata[:, adata.var['highly_variable']]
+       adata_vars =  adata[:, adata.var['highly_variable']]
        
-    if isinstance(adata_Vars.X, csc_matrix) or isinstance(adata_Vars.X, csr_matrix):
-       feat = adata_Vars.X.toarray()[:, ]
+    if isinstance(adata_vars.X, csc_matrix) or isinstance(adata_vars.X, csr_matrix):
+       feat = adata_vars.X.toarray()[:, ]
     else:
-       feat = adata_Vars.X[:, ] 
+       feat = adata_vars.X[:, ] 
     
     # data augmentation
     feat_a = permutation(feat)
     
     adata.obsm['feat'] = feat
     adata.obsm['feat_a'] = feat_a    
-    
-def add_contrastive_label(adata):
-    # contrastive label
-    n_spot = adata.n_obs
-    one_matrix = np.ones([n_spot, 1])
-    zero_matrix = np.zeros([n_spot, 1])
-    label_CSL = np.concatenate([one_matrix, zero_matrix], axis=1)
-    adata.obsm['label_CSL'] = label_CSL
-    
-def normalize_adj(adj):
-    """Symmetrically normalize adjacency matrix."""
-    adj = sp.coo_matrix(adj)
-    rowsum = np.array(adj.sum(1))
-    d_inv_sqrt = np.power(rowsum, -0.5).flatten()
-    d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.
-    d_mat_inv_sqrt = sp.diags(d_inv_sqrt)
-    adj = adj.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt)
-    return adj.toarray()
 
-def preprocess_adj(adj):
-    """Preprocessing of adjacency matrix for simple GCN model and conversion to tuple representation."""
-    adj_normalized = normalize_adj(adj)+np.eye(adj.shape[0])
-    return adj_normalized 
+def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=5, vis=False, eval=False, resolution=None):
+    data_folder = meta_folder +'/'
+    if resolution != None:
+        if osp.exists(data_folder + f'pre-cluster_adj_reso={resolution}.pickle'):
+            print(f">>> Cache exisits: {data_folder + f'pre_cluster_adj_reso={resolution}.pickle'}")
+            with open(data_folder + f'pre-cluster_adj_reso={resolution}.pickle', 'rb') as file:
+                prune_G = pickle.load(file)
+        else:
+            cell_types = pd.read_csv(data_folder + 'cell_types.csv').iloc[:, 0]
+            type_id_list = cell_types[cell_types == bi_type].index.to_list()
 
-def sparse_mx_to_torch_sparse_tensor(sparse_mx):
-    """Convert a scipy sparse matrix to a torch sparse tensor."""
-    sparse_mx = sparse_mx.tocoo().astype(np.float32)
-    indices = torch.from_numpy(np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
-    values = torch.from_numpy(sparse_mx.data)
-    shape = torch.Size(sparse_mx.shape)
-    return torch.sparse.FloatTensor(indices, values, shape)
+            adata = ad.AnnData(X[type_id_list])
+            sc.tl.pca(adata, svd_solver='arpack', random_state=seed)
+            sc.pp.neighbors(adata, random_state=seed)
+            pre_labels = 'expression_louvain_label'
 
-def preprocess_adj_sparse(adj):
-    adj = sp.coo_matrix(adj)
-    adj_ = adj + sp.eye(adj.shape[0])
-    rowsum = np.array(adj_.sum(1))
-    degree_mat_inv_sqrt = sp.diags(np.power(rowsum, -0.5).flatten())
-    adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocoo()
-    return sparse_mx_to_torch_sparse_tensor(adj_normalized)    
+            if vis:
+                bi_type_name = bi_type.replace('/', 'or')
+                title = f"Pre-cluster_{bi_type_name}"
+                fig_name = f"pre-cluster_spatial_{bi_type_name}_reso={resolution}"
 
-def fix_seed(seed):
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    cudnn.deterministic = True
-    cudnn.benchmark = False
-    
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+                sc.tl.louvain(adata, resolution=resolution, key_added=pre_labels, random_state=seed)
+                sc.tl.umap(adata, random_state=seed)
+                cluster_labels = [int(x) for x in np.array(adata.obs[pre_labels])]
+
+                label = adata.obs[pre_labels]
+
+                coordinates = coords[type_id_list]
+                n_clusters = max(cluster_labels) + 1 # start from 0
+                print(f'>>> {n_clusters} clusters in drwaing...')
+                txt_lines = [ [idx, x] for idx, x in zip(type_id_list, cluster_labels) ]
+                np.savetxt(data_folder + f"pre-cluster_{bi_type_name}_types_reso={resolution}.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
+
+                sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cluster_labels, cmap='rainbow')
+                if n_clusters <= 3:
+                    plt.legend(*sc_cluster.legend_elements(), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                else:
+                    plt.legend(*sc_cluster.legend_elements(num=n_clusters), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                plt.xticks([])
+                plt.yticks([])
+                plt.axis('scaled')
+                plt.title(f'{title}')
+                plt.savefig(data_folder + f'{fig_name}.png', dpi=400, bbox_inches='tight') 
+                plt.clf()
+
+            if eval:
+                labels_true_full = np.array(
+                    pd.read_csv(data_folder + 'regions.csv')['Region'].tolist()
+                )
+                labels_true = labels_true_full[type_id_list]
+                labels_pred = [label for idx, label in txt_lines]
+                eva(labels_true, labels_pred, out_file=osp.join(data_folder, f'pre-cluster_reso={resolution}.txt'))
+
+            print('>>> Pruning the graph...')
+            if not sp.isspmatrix_coo(adj_0):
+                adj = adj_0.tocoo()
+            else:
+                adj = adj_0.copy()
+            adj = adj.astype(np.float32)
+            Graph_df = pd.DataFrame({'St': adj.row, 'Ed': adj.col, 'Data': adj.data})
+            print('>>> %d edges before pruning.' %Graph_df.shape[0])
+            # pro_labels_dict = dict(zip(list(map(int, label.index)), label)) # FIXME: change the 0 -> 0-th's idx, dict(zip(type_id_list, label))
+            pro_labels_dict = dict(zip(type_id_list, label))
+            for i in range(X.shape[0]):
+                if pro_labels_dict.get(i) is None:
+                    pro_labels_dict[i] = '-1'
+            Graph_df['St_label'] = Graph_df['St'].map(pro_labels_dict)
+            Graph_df['Ed_label'] = Graph_df['Ed'].map(pro_labels_dict)
+            # Graph_df = Graph_df.loc[(Graph_df['St_label']==Graph_df['Ed_label']) | (Graph_df['St_label'] == '-1') | (Graph_df['Ed_label'] == '-1')] # Leave the edge connecting not bi_type spot
+            Graph_df = Graph_df.loc[(Graph_df['St_label']==Graph_df['Ed_label'])] # Leave only the edge in bi_type groups
+            print('>>> %d edges after pruning.' %Graph_df.shape[0])
+
+            prune_G = sp.coo_matrix((np.ones(Graph_df.shape[0]), (Graph_df['St'], Graph_df['Ed'])))
+            with open(data_folder + f'pre-cluster_adj_reso={resolution}.pickle', 'wb') as file:
+                pickle.dump(prune_G, file)
+    else:
+        if osp.exists(data_folder + f'pre-cluster_adj_{n}.pickle'):
+            print(f">>> Cache exisits: {data_folder + f'pre_cluster_adj_{n}.pickle'}")
+            with open(data_folder + f'pre-cluster_adj_{n}.pickle', 'rb') as file:
+                prune_G = pickle.load(file)
+        else:
+            cell_types = pd.read_csv(data_folder + 'cell_types.csv').iloc[:, 0]
+            type_id_list = cell_types[cell_types == bi_type].index.to_list() # Tid: type_id_list is used for slice, in other word, it contains the idx mapping:
+            # For example, 0-th's idx -> 0, 1-th's idx -> 1, 2-th's idx -> 2
+            # If we want to do the reverse mapping, just say, 0 -> 0-th's idx, 1 -> 1-th's idx, 2 -> 2-th's idx
+            # What should we do, it is use slice operations in the equantion left
+            # It's import to notion that the graph after pruning is created from the Graph_df
+            # Graph_df, which is the pd.DataFrame, contains three columns: edge start spot idx, edge end spot idx and edge's value
+            # How we modify the Graph_df?:
+            # First: construct a label dict to map, the dict is created by the scheme: {0: 0 label}
+            # Second: Set the new column for the pandas.DataFrame, both edge start spot idx and edge end sport idx
+            # Third: Judge from the relation between edge start & end spot idx
+
+            adata = ad.AnnData(X[type_id_list])
+            sc.tl.pca(adata, svd_solver='arpack', random_state=seed)
+            sc.pp.neighbors(adata, random_state=seed)
+            pre_labels = 'expression_louvain_label'
+            increment = 0.01
+            ret_type_cnt = 0
+
+            # Iterating using the Progress class in rich
+            with Progress() as prog:
+                reso_lst_sorted = sorted(list(np.arange(increment, 1000, increment)))
+                task = prog.add_task('Getting type-aware Adj...', total=len(reso_lst_sorted))
+                for reso in reso_lst_sorted:
+                    sc.tl.louvain(adata, resolution=reso, key_added=pre_labels, random_state=seed)
+                    ret_type_cnt = len(pd.DataFrame(adata.obs[pre_labels]).expression_louvain_label.unique())
+                    # prog.console.print(f"ret_type_cnt={ret_type_cnt}")
+                    if ret_type_cnt == n:
+                        print('>>> Resolution:', reso)
+                        label = adata.obs[pre_labels]
+                        break
+                    prog.advance(task)
+
+            if vis:
+                eval_reso = reso
+                bi_type_name = bi_type.replace('/', 'or')
+                title = f"Pre-cluster_{bi_type_name}"
+                fig_name = f"pre-cluster_spatial_{bi_type_name}_{n}"
+
+                sc.tl.louvain(adata, resolution=eval_reso, key_added=pre_labels, random_state=seed)
+                sc.tl.umap(adata, random_state=seed)
+                cluster_labels = [int(x) for x in np.array(adata.obs[pre_labels])]
+
+                coordinates = coords[type_id_list]
+                n_clusters = max(cluster_labels) + 1 # start from 0
+                print(f'>>> {n_clusters} clusters in drwaing...')
+                txt_lines = [ [idx, x] for idx, x in zip(type_id_list, cluster_labels) ]
+                np.savetxt(data_folder + f"pre-cluster_{bi_type_name}_types_{n}.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
+
+                sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cluster_labels, cmap='rainbow')
+                if n_clusters <= 3:
+                    plt.legend(*sc_cluster.legend_elements(), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                else:
+                    plt.legend(*sc_cluster.legend_elements(num=n_clusters), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                plt.xticks([])
+                plt.yticks([])
+                plt.axis('scaled')
+                plt.title(f'{title}')
+                plt.savefig(data_folder + f'{fig_name}.png', dpi=400, bbox_inches='tight') 
+                plt.clf()
+
+            if eval:
+                labels_true_full = np.array(
+                    pd.read_csv(data_folder + 'regions.csv')['Region'].tolist()
+                )
+                labels_true = labels_true_full[type_id_list]
+                labels_pred = [label for idx, label in txt_lines]
+                eva(labels_true, labels_pred, out_file=osp.join(data_folder, f'pre-cluster_{n}.txt'))
+
+            print('>>> Pruning the graph...')
+            if not sp.isspmatrix_coo(adj_0):
+                adj = adj_0.tocoo()
+            else:
+                adj = adj_0.copy()
+            adj = adj.astype(np.float32)
+            Graph_df = pd.DataFrame({'St': adj.row, 'Ed': adj.col, 'Data': adj.data})
+            print('>>> %d edges before pruning.' %Graph_df.shape[0])
+            # pro_labels_dict = dict(zip(list(map(int, label.index)), label)) # FIXME: change the 0 -> 0-th's idx, dict(zip(type_id_list, label))
+            pro_labels_dict = dict(zip(type_id_list, label))
+            for i in range(X.shape[0]):
+                if pro_labels_dict.get(i) is None:
+                    pro_labels_dict[i] = '-1'
+            Graph_df['St_label'] = Graph_df['St'].map(pro_labels_dict)
+            Graph_df['Ed_label'] = Graph_df['Ed'].map(pro_labels_dict)
+            # Graph_df = Graph_df.loc[(Graph_df['St_label']==Graph_df['Ed_label']) | (Graph_df['St_label'] == '-1') | (Graph_df['Ed_label'] == '-1')] # Leave the edge connecting not bi_type spot
+            Graph_df = Graph_df.loc[(Graph_df['St_label']==Graph_df['Ed_label'])] # Leave only the edge in bi_type groups
+            print('>>> %d edges after pruning.' %Graph_df.shape[0])
+
+            prune_G = sp.coo_matrix((np.ones(Graph_df.shape[0]), (Graph_df['St'], Graph_df['Ed'])))
+            with open(data_folder + f'pre-cluster_adj_{n}.pickle', 'wb') as file:
+                pickle.dump(prune_G, file)
+    return prune_G
+
+def get_bi_type_related_adj(adj_0, y):
+    adj_0 = _confirm_coo_mat(adj_0)
+    y = _confirm_np_array(y)
+
+    # Use COO format
+    new_row = []
+    new_col = []
+    new_data = []
+    for st, ed, e_val in track(zip(adj_0.row, adj_0.col, adj_0.data)):
+        if y[st] == 1 or y[ed] == 1:
+            new_row.append(st)
+            new_col.append(ed)
+            new_data.append(e_val)
+
+    return sp.coo_matrix((new_data, (new_row, new_col)), shape=adj_0.shape)
