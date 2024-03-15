@@ -164,20 +164,20 @@ def train(stcase_args):
                     eval=not args.wo_anno,
                     region_col_name=args.region_col_name
                 )
-                draw_sub_type_map(
-                    t, 
-                    args.data_name, 
-                    types_set, 
-                    node_embed, 
-                    method, 
-                    args.time_stamp, 
-                    args.seed, 
-                    fixed_clus_count=args.n_clusters, 
-                    cluster_method='mcluster', 
-                    cluster_with_fix_reso=False,
-                    eval=not args.wo_anno,
-                    region_col_name=args.region_col_name
-                )
+                # draw_sub_type_map(
+                #     t, 
+                #     args.data_name, 
+                #     types_set, 
+                #     node_embed, 
+                #     method, 
+                #     args.time_stamp, 
+                #     args.seed, 
+                #     fixed_clus_count=args.n_clusters, 
+                #     cluster_method='mcluster', 
+                #     cluster_with_fix_reso=False,
+                #     eval=not args.wo_anno,
+                #     region_col_name=args.region_col_name
+                # )
             else:
                 draw_sub_type_map(
                     t, 
