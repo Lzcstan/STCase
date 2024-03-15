@@ -309,7 +309,7 @@ def check_edge_in_adj(st, ed, sts, eds):
         return False
     return True
 
-def filter_attn_LRs(attn_LRs, adj, cut=1000, return_std=False):
+def filter_attn_LRs(attn_LRs, adj, cut='FULL', return_std=False):
     sts, eds = adj.row, adj.col
     none_interactions = []
     all_false_interactions = []
@@ -337,7 +337,11 @@ def filter_attn_LRs(attn_LRs, adj, cut=1000, return_std=False):
     print(f"#Interaction without edges={len(none_interactions)}")
     print(f"#Interaction without std={len(all_false_interactions)}")
 
-    ret_dict = dict(sorted(std_LRs.items(), key=lambda x: x[1], reverse=True)[:cut])
+    if cut == "FULL":
+        ret_dict = dict(sorted(std_LRs.items(), key=lambda x: x[1], reverse=True))
+    else:
+        ret_dict = dict(sorted(std_LRs.items(), key=lambda x: x[1], reverse=True)[:cut])
+
     cut_attn_LRs = {key: attn_LRs[key].tocoo() for key in ret_dict.keys()}
 
     if return_std:

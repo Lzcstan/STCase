@@ -28,10 +28,10 @@ def prepare_args(args):
     args.device = args.gpu if (torch.cuda.is_available() and args.use_gpu) else 'cpu'
 
     args.seed = 0
-    args.lr_cut = 20000
+    args.lr_cut = "FULL" # int or "FULL"
     args.h = 10
     args.n_input = 3000
-    args.num_epoch = 100
+    args.num_epoch = 1000
     args.learning_rate = 1e-3
 
     args.use_norm = False
