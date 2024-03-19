@@ -59,7 +59,7 @@ def get_adj(generated_data_fold, coordinates, boundary, k):
 
         distance_array = np.array(distance_list)
         np.save(osp.join(generated_data_fold, 'distance_array.npy'), distance_array)
-        print(f'>>> Total time: {time.time() - st}s.')
+        print(f'Total time: {time.time() - st}s.')
     else:
         distance_array = np.load(osp.join(generated_data_fold, 'distance_array.npy'))
 
@@ -220,9 +220,9 @@ def generate_data(args):
         adata.obs[args.region_col_name].to_csv(osp.join(generated_data_fold, 'regions.csv'), index=False)
         draw_region_map(generated_data_fold, coordinates, args.region_col_name)
     elif args.wo_anno:
-        print(">>> Choose to sub-cluster without ground-truth.")
+        print("Choose to sub-cluster without ground-truth.")
     else:
-        print(">>> Sub-clustering region ground-truth not found!")
+        print("Sub-clustering region ground-truth not found!")
 
     np.save(osp.join(generated_data_fold, 'features.npy'), features)
     np.save(osp.join(generated_data_fold, 'coordinates.npy'), coordinates)
@@ -253,8 +253,8 @@ def generate_data(args):
                     edge_num += 1
 
         if edge_num / cell_num > (k - 0.2) and edge_num / cell_num < k:
-            print('>>> Boundary: ', boundary)
-            print('>>> Average number of neighbor: ', edge_num / cell_num)
+            print('Boundary: ', boundary)
+            print('Average number of neighbor: ', edge_num / cell_num)
             break
 
     cell_types = adata.obs[args.label_col_name]
