@@ -19,42 +19,47 @@
 
    - First install pytorch related packages
 
-   `pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113`
+      `pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113`
 
-   The version of pytorch should be suitable for the version of cudatoolkit. The above command is from the pytorch official website and is the latest version that cuda 11.3 can install.
+      The version of pytorch should be suitable for the version of cudatoolkit. The above command is from the pytorch official website and is the latest version that cuda 11.3 can install.
 
-   Those with different cuda versions can find the appropriate command on [this website](https://pytorch.org/get-started/previous-versions/).
+      Those with different cuda versions can find the appropriate command on [this website](https://pytorch.org/get-started/previous-versions/).
 
-   To install PyTorch-related packages without GPU hardware capabilities, utilize the following command:
-   
-   `pip install torch==1.12.1+cpu torchvision==0.13.1+cpu torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cpu`
+      To install PyTorch-related packages without GPU hardware capabilities, utilize the following command:
+      
+      `pip install torch==1.12.1+cpu torchvision==0.13.1+cpu torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cpu`
    - Then install torch_geometric related packages
 
-   There are five torch_geometric related packages: torch_spline_conv, torch_sparse, torch_scatter, torch_cluster, pyg_lib, of which pyg_lib should be installed last.
+      There are five torch_geometric related packages: torch_spline_conv, torch_sparse, torch_scatter, torch_cluster, pyg_lib, of which pyg_lib should be installed last.
 
-   The version of the above packages is related to the system architecture, operating system, Python version, CUDA version and PyTorch version. If the package version of each step is consistent with the tutorial, you can directly download the wheel files in one of the following two links for installation, depending on the presence of GPU hardware：
+      The version of the above packages is related to the system architecture, operating system, Python version, CUDA version and PyTorch version. If the package version of each step is consistent with the tutorial, you can directly download the wheel files in one of the following two links for installation, depending on the presence of GPU hardware：
 
-   Link: [GPU wheels](https://pan.baidu.com/s/1FqA9KFENfk4RSOMLmblyiw) Password: 8rvh
-   or
-   Link: [CPU wheels](https://pan.baidu.com/s/1EvAMBq8DYEvSL-JLqUQbkg) Password: krt6
+      Link: [GPU wheels](https://pan.baidu.com/s/1FqA9KFENfk4RSOMLmblyiw) Password: 8rvh
+      or
+      Link: [CPU wheels](https://pan.baidu.com/s/1EvAMBq8DYEvSL-JLqUQbkg) Password: krt6
 
-   `pip install torch_spline_conv-1.2.1+pt112cu113-cp310-cp310-linux_x86_64.whl`
-   `pip install torch_sparse-0.6.16+pt112cu113-cp310-cp310-linux_x86_64.whl`
-   `pip install torch_scatter-2.1.0+pt112cu113-cp310-cp310-linux_x86_64.whl`
-   `pip install torch_cluster-1.6.0+pt112cu113-cp310-cp310-linux_x86_64.whl`
-   `pip install pyg_lib-0.3.0+pt112cu113-cp310-cp310-linux_x86_64.whl`
-   or
-   `pip install torch_spline_conv-1.2.1+pt112cpu-cp310-cp310-linux_x86_64.whl`
-   `pip install torch_sparse-0.6.16+pt112cpu-cp310-cp310-linux_x86_64.whl`
-   `pip install torch_scatter-2.1.0+pt112cpu-cp310-cp310-linux_x86_64.whl`
-   `pip install torch_cluster-1.6.0+pt112cpu-cp310-cp310-linux_x86_64.whl`
-   `pip install pyg_lib-0.3.0+pt112cpu-cp310-cp310-linux_x86_64.whl`
+      ```bash
+      pip install torch_spline_conv-1.2.1+pt112cu113-cp310-cp310-linux_x86_64.whl
+      pip install torch_sparse-0.6.16+pt112cu113-cp310-cp310-linux_x86_64.whl
+      pip install torch_scatter-2.1.0+pt112cu113-cp310-cp310-linux_x86_64.whl
+      pip install torch_cluster-1.6.0+pt112cu113-cp310-cp310-linux_x86_64.whl
+      pip install pyg_lib-0.3.0+pt112cu113-cp310-cp310-linux_x86_64.whl
+      ```
+      or
 
-   Otherwise, please download the appropriate wheel file from [this website](https://data.pyg.org/whl/), and note that the above installation commands should also be modified accordingly.
+      ```
+      pip install torch_spline_conv-1.2.1+pt112cpu-cp310-cp310-linux_x86_64.whl
+      pip install torch_sparse-0.6.16+pt112cpu-cp310-cp310-linux_x86_64.whl
+      pip install torch_scatter-2.1.0+pt112cpu-cp310-cp310-linux_x86_64.whl
+      pip install torch_cluster-1.6.0+pt112cpu-cp310-cp310-linux_x86_64.whl
+      pip install pyg_lib-0.3.0+pt112cpu-cp310-cp310-linux_x86_64.whl
+      ```
 
-   Finally, install torch_geometric:
+      Otherwise, please download the appropriate wheel file from [this website](https://data.pyg.org/whl/), and note that the above installation commands should also be modified accordingly.
 
-   `pip install torch_geometric`
+   - Finally, install torch_geometric:
+
+      `pip install torch_geometric`
 4. `pip install STACCI`
 
 # Usage Instructions
