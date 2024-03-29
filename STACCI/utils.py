@@ -8,6 +8,8 @@ import anndata as ad
 import os.path as osp
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
+import rpy2.robjects as robjects
+import rpy2.robjects.numpy2ri as numpy2ri
 from rich import print
 from rich.progress import track, Progress
 from contextlib import redirect_stdout
@@ -34,25 +36,30 @@ def compute_matching(labels_true, labels_pred):
 
     row_ind, col_ind = linear(-similarity_matrix)
 
-    label_mapping = {unique_labels_pred[col]: unique_labels_true[row] for row, col in zip(row_ind, col_ind)}
+    label_mapping = {
+        unique_labels_pred[col]: unique_labels_true[row] for row, col in zip(row_ind, col_ind)
+    }
 
     matched_labels_true = np.array([label_mapping[label] for label in labels_pred])
 
     return similarity_matrix, matched_labels_true, label_mapping
 
 def evaluate_clustering(labels_true, labels_pred):
-    similarity_matrix, matched_labels_true, label_mapping = compute_matching(labels_true, labels_pred)
+    similarity_matrix, matched_labels_true, label_mapping = compute_matching(
+        labels_true, labels_pred
+    )
 
     ari = ari_score(labels_true, matched_labels_true)
     nmi = nmi_score(labels_true, matched_labels_true)
     f1 = metrics.f1_score(labels_true, matched_labels_true, average='weighted')
     acc = metrics.accuracy_score(labels_true, matched_labels_true)
-    # acc, f1 = cluster_acc(labels_true, matched_labels_true) # FIXME: values in labels_true may not int, but string
 
     return similarity_matrix, matched_labels_true, label_mapping, ari, nmi, f1, acc
 
 def eva(labels_true, labels_pred, out_file=None):
-    similarity_matrix, matched_labels_true, label_mapping, ari, nmi, f1, acc = evaluate_clustering(labels_true=labels_true, labels_pred=labels_pred)
+    similarity_matrix, matched_labels_true, label_mapping, ari, nmi, f1, acc = evaluate_clustering(
+        labels_true=labels_true, labels_pred=labels_pred
+    )
     
     unique_labels_true = np.unique(labels_true)
     unique_labels_pred = np.unique(labels_pred)
@@ -64,7 +71,11 @@ def eva(labels_true, labels_pred, out_file=None):
                 header = "\t".join([""] + [f"Pred: {label}" for label in unique_labels_pred])
                 print(header)
                 for i, true_label in enumerate(unique_labels_true):
-                    row = "\t".join([f"True: {true_label}"] + [str(similarity_matrix[i, j]) for j in range(len(unique_labels_pred))])
+                    row = "\t".join(
+                        [f"True: {true_label}"] + [
+                            str(similarity_matrix[i, j]) for j in range(len(unique_labels_pred))
+                        ]
+                    )
                     print(row)
 
                 # print("\n>>> Matched Labels True:", matched_labels_true)
@@ -78,7 +89,11 @@ def eva(labels_true, labels_pred, out_file=None):
         header = "\t".join([""] + [f"Pred: {label}" for label in unique_labels_pred])
         print(header)
         for i, true_label in enumerate(unique_labels_true):
-            row = "\t".join([f"True: {true_label}"] + [str(similarity_matrix[i, j]) for j in range(len(unique_labels_pred))])
+            row = "\t".join(
+                [f"True: {true_label}"] + [
+                    str(similarity_matrix[i, j]) for j in range(len(unique_labels_pred))
+                ]
+            )
             print(row)
 
         # print("\n>>> Matched Labels True:", matched_labels_true)
@@ -90,21 +105,18 @@ def eva(labels_true, labels_pred, out_file=None):
 
 def mclust_R(emb_pca, num_cluster, modelNames='EEE', random_seed=2020):
     np.random.seed(random_seed)
-    import rpy2.robjects as robjects
     robjects.r.library("mclust")
 
-    import rpy2.robjects.numpy2ri
-    rpy2.robjects.numpy2ri.activate()
+    numpy2ri.activate()
     r_random_seed = robjects.r['set.seed']
     r_random_seed(random_seed)
     rmclust = robjects.r['Mclust']
     
-    res = rmclust(rpy2.robjects.numpy2ri.numpy2rpy(emb_pca), num_cluster, modelNames)
+    res = rmclust(numpy2ri.numpy2rpy(emb_pca), num_cluster, modelNames)
     mclust_res = np.array(res[-2])
 
     ret = mclust_res
     ret = ret.astype('int')
-    # ret = ret.astype('category')
     return ret
 
 def clustering(emb, n_clusters=7, start=0.1, end=3.0, increment=0.01, refinement=False):
@@ -132,13 +144,12 @@ def draw_sub_type_map(
         eval=True,
         region_col_name="NULL"
 ):
-    # outdir=osp.join('results', data_name, time_stamp, f'SubType_{method}')
-    outdir=osp.join('results', data_name, time_stamp, method)
+    outdir=osp.join('results/', data_name, time_stamp, method)
     if not osp.exists(outdir):
         os.makedirs(outdir)
-    generated_data_fold = 'generated/' + data_name +'/'
+    generated_data_fold = osp.join('generated/', data_name)
 
-    cell_types = pd.read_csv(generated_data_fold + 'cell_types.csv').iloc[:, 0]
+    cell_types = pd.read_csv(osp.join(generated_data_fold, 'cell_types.csv')).iloc[:, 0]
     if eval:
         labels_true_full = np.array(
             pd.read_csv(osp.join(generated_data_fold, 'regions.csv'))[region_col_name].tolist()
@@ -153,20 +164,51 @@ def draw_sub_type_map(
                 if resolution == None:
                     # Fixed subtype number
                     adata = ad.AnnData(node_embed[type_id_list])
-                    sc.pp.neighbors(adata, n_neighbors=20, n_pcs=0, key_added='SPACE', random_state=seed)
+                    sc.pp.neighbors(
+                        adata, 
+                        n_neighbors=20, 
+                        n_pcs=0, 
+                        key_added='STACCI', 
+                        random_state=seed
+                    )
                     for res in sorted(list(np.arange(0.02, 5, increment)), reverse=True):
-                        sc.tl.leiden(adata, resolution=res, neighbors_key='SPACE', random_state=seed)
+                        sc.tl.leiden(
+                            adata, 
+                            resolution=res, 
+                            neighbors_key='STACCI', 
+                            random_state=seed
+                        )
                         count_unique_leiden = len(pd.DataFrame(adata.obs['leiden']).leiden.unique())
                         if count_unique_leiden == fixed_clus_count:
                             print('Resolution:', res)
                             break
                     eval_resolution = res
-                    sc.tl.leiden(adata, key_added="leiden", neighbors_key='SPACE', resolution=eval_resolution, random_state=seed)
-                    sc.tl.umap(adata, neighbors_key='SPACE', random_state=seed)
+                    sc.tl.leiden(
+                        adata, 
+                        key_added="leiden", 
+                        neighbors_key='STACCI', 
+                        resolution=eval_resolution, 
+                        random_state=seed
+                    )
+                    sc.tl.umap(adata, neighbors_key='STACCI', random_state=seed)
                     cluster_labels = np.array(adata.obs['leiden'])
                     txt_lines = [ [idx, int(x)] for idx, x in zip(type_id_list, cluster_labels) ]
-                    np.savetxt(outdir + f"/fixed_n={fixed_clus_count}_{t.replace('/', 'or')}_types.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
-                    draw_default_outdir(generated_data_fold, outdir, f"SPACE_{t}", f"fixed_n={fixed_clus_count}_spatial_{t.replace('/', 'or')}", f"/fixed_n={fixed_clus_count}_{t.replace('/', 'or')}_types.txt")
+                    np.savetxt(
+                        osp.join(
+                            outdir, 
+                            f"fixed_n={fixed_clus_count}_{t.replace('/', 'or')}_types.txt"
+                        ), 
+                        np.array(txt_lines), 
+                        fmt='%3d', 
+                        delimiter='\t'
+                    )
+                    draw_default_outdir(
+                        generated_data_fold, 
+                        outdir, 
+                        f"STACCI_{t}", 
+                        f"fixed_n={fixed_clus_count}_spatial_{t.replace('/', 'or')}", 
+                        f"fixed_n={fixed_clus_count}_{t.replace('/', 'or')}_types.txt"
+                    )
 
                     if eval:
                         labels_pred = [label for idx, label in txt_lines]
@@ -175,53 +217,112 @@ def draw_sub_type_map(
                 if cluster_with_fix_reso:
                     # Fixed leiden resolution
                     adata = ad.AnnData(node_embed[type_id_list])
-                    sc.pp.neighbors(adata, n_neighbors=20, n_pcs=0, key_added='SPACE', random_state=seed)
+                    sc.pp.neighbors(
+                        adata, 
+                        n_neighbors=20, 
+                        n_pcs=0, 
+                        key_added='STACCI', 
+                        random_state=seed
+                    )
                     eval_resolution = 1 if resolution == None else resolution
-                    sc.tl.leiden(adata, key_added="leiden", neighbors_key='SPACE', resolution=eval_resolution, random_state=seed)
-                    sc.tl.umap(adata, neighbors_key='SPACE', random_state=seed)
+                    sc.tl.leiden(
+                        adata, 
+                        key_added="leiden", 
+                        neighbors_key='STACCI', 
+                        resolution=eval_resolution, 
+                        random_state=seed
+                    )
+                    sc.tl.umap(adata, neighbors_key='STACCI', random_state=seed)
                     cluster_labels = np.array(adata.obs['leiden'])
                     txt_lines = [ [idx, int(x)] for idx, x in zip(type_id_list, cluster_labels) ]
-                    np.savetxt(outdir + f"/fixed_reso={eval_resolution}_{t.replace('/', 'or')}_types.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
-                    draw_default_outdir(generated_data_fold, outdir, f"SPACE_{t}", f"fixed_reso={eval_resolution}_spatial_{t.replace('/', 'or')}", f"/fixed_reso={eval_resolution}_{t.replace('/', 'or')}_types.txt")
+                    np.savetxt(
+                        osp.join(
+                            outdir, 
+                            f"fixed_reso={eval_resolution}_{t.replace('/', 'or')}_types.txt"
+                        ), 
+                        np.array(txt_lines), 
+                        fmt='%3d', 
+                        delimiter='\t'
+                    )
+                    draw_default_outdir(
+                        generated_data_fold, 
+                        outdir, 
+                        f"STACCI_{t}",
+                        f"fixed_reso={eval_resolution}_spatial_{t.replace('/', 'or')}", 
+                        f"fixed_reso={eval_resolution}_{t.replace('/', 'or')}_types.txt"
+                    )
 
                     if eval:
                         labels_pred = [label for idx, label in txt_lines]
-                        eva(labels_true, labels_pred, out_file=osp.join(outdir, f'leiden_reso={eval_resolution}.txt'))
+                        eva(
+                            labels_true, 
+                            labels_pred, 
+                            out_file=osp.join(outdir, f'leiden_reso={eval_resolution}.txt')
+                        )
 
-            elif cluster_method == 'mcluster':
+            elif cluster_method == 'mclust': # Must cluster with fixed sub-type count
                 emb = node_embed[type_id_list]
                 ret = clustering(emb, n_clusters=fixed_clus_count)
                 cell_cluster_type_list = ret - 1
                 n_clusters = max(ret)
-                title = f"SPACE_{t}_mcluster"
-                coordinates = np.load(generated_data_fold + 'coordinates.npy')[type_id_list]
+                title = f"STACCI_{t}_mclust"
+                coordinates = np.load(
+                    osp.join(generated_data_fold, 'coordinates.npy')
+                )[type_id_list]
 
-                txt_lines = [ [idx, int(x)] for idx, x in zip(type_id_list, cell_cluster_type_list) ]
-                np.savetxt(outdir + f"/mcluster_fixed_n_{t.replace('/', 'or')}_types.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
+                txt_lines = [
+                    [idx, int(x)] for idx, x in zip(type_id_list, cell_cluster_type_list)
+                ]
+                np.savetxt(
+                    osp.join(outdir, f"mclust_fixed_n_{t.replace('/', 'or')}_types.txt"), 
+                    np.array(txt_lines), 
+                    fmt='%3d', 
+                    delimiter='\t'
+                )
 
-                sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cell_cluster_type_list, cmap='rainbow')
+                sc_cluster = plt.scatter(
+                    x=coordinates[:, 0],
+                    y=-coordinates[:, 1], 
+                    s=5, 
+                    c=cell_cluster_type_list, 
+                    cmap='rainbow'
+                )
                 if n_clusters <= 3:
-                    plt.legend(*sc_cluster.legend_elements(), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                    plt.legend(
+                        *sc_cluster.legend_elements(), 
+                        bbox_to_anchor=(1, 0.5), 
+                        loc='center left', 
+                        prop={'size': 9}
+                    )
                 else:
-                    plt.legend(*sc_cluster.legend_elements(num=n_clusters), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
-                #cb_cluster = plt.colorbar(sc_cluster, boundaries=np.arange(n_types+1)-0.5).set_ticks(np.arange(n_types))    
+                    plt.legend(
+                        *sc_cluster.legend_elements(num=n_clusters), 
+                        bbox_to_anchor=(1, 0.5), 
+                        loc='center left',
+                        prop={'size': 9}
+                    )
                 plt.xticks([])
                 plt.yticks([])
                 plt.axis('scaled')
-                #plt.xlabel('X')
-                #plt.ylabel('Y')
                 plt.title(f'{title}')
-                plt.savefig(outdir + f"/mcluster_fixed_n_spatial_{t.replace('/', 'or')}.png", dpi=400, bbox_inches='tight') 
+                plt.savefig(
+                    osp.join(outdir, f"mclust_fixed_n_spatial_{t.replace('/', 'or')}.png"), 
+                    dpi=400, 
+                    bbox_inches='tight'
+                ) 
                 plt.clf()
                 
                 if eval:
                     labels_pred = cell_cluster_type_list # TODO: can be saved with type_id_list
-                    eva(labels_true, labels_pred, out_file=osp.join(outdir, 'mcluster.txt'))
+                    eva(labels_true, labels_pred, out_file=osp.join(outdir, 'mclust.txt'))
             else:
                 pass
 
 def draw_default_outdir(data_folder, save_path, title, fig_name, type_txt_file_name):
-    f = open(save_path + f'/types.txt') if type_txt_file_name is None else open(save_path + type_txt_file_name)           
+    if type_txt_file_name is None:
+        f = open(osp.join(save_path, 'types.txt'))
+    else:
+        f = open(osp.join(save_path, type_txt_file_name))
     line = f.readline() # drop the first line  
     cell_cluster_type_list = []
     id_list = []
@@ -230,26 +331,40 @@ def draw_default_outdir(data_folder, save_path, title, fig_name, type_txt_file_n
         tmp = line.split('\t')
         cell_id = int(tmp[0]) # index start is start from 0 here
         id_list.append(cell_id)
-        #cell_type_index = int(tmp[1])
         cell_cluster_type = int(tmp[1].replace('\n', ''))
         cell_cluster_type_list.append(cell_cluster_type)
         line = f.readline()
     f.close() 
     n_clusters = max(cell_cluster_type_list) + 1 # start from 0
     print(f'{n_clusters} clusters in drawing...')
-    coordinates = np.load(data_folder + 'coordinates.npy')[id_list]
+    coordinates = np.load(osp.join(data_folder, 'coordinates.npy'))[id_list]
 
-    sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cell_cluster_type_list, cmap='rainbow')
+    sc_cluster = plt.scatter(
+        x=coordinates[:, 0], 
+        y=-coordinates[:, 1], 
+        s=5, 
+        c=cell_cluster_type_list, 
+        cmap='rainbow'
+    )
     if n_clusters <= 3:
-        plt.legend(*sc_cluster.legend_elements(), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+        plt.legend(
+            *sc_cluster.legend_elements(), 
+            bbox_to_anchor=(1, 0.5), 
+            loc='center left', 
+            prop={'size': 9}
+        )
     else:
-        plt.legend(*sc_cluster.legend_elements(num=n_clusters), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
-    #cb_cluster = plt.colorbar(sc_cluster, boundaries=np.arange(n_types+1)-0.5).set_ticks(np.arange(n_types))    
+        plt.legend(
+            *sc_cluster.legend_elements(num=n_clusters), 
+            bbox_to_anchor=(1, 0.5), 
+            loc='center left', 
+            prop={'size': 9}
+        )
     plt.xticks([])
     plt.yticks([])
     plt.axis('scaled')
     plt.title(f'{title}')
-    plt.savefig(save_path + f'/{fig_name}.png', dpi=400, bbox_inches='tight') 
+    plt.savefig(osp.join(save_path, f'{fig_name}.png'), dpi=400, bbox_inches='tight') 
     plt.clf()
 
 def find_range(nums, target):
@@ -317,7 +432,9 @@ def filter_attn_LRs(attn_LRs, adj, cut='FULL', return_std=False):
     for interaction in track(attn_LRs.keys(), description='>>> Filtering...'):
         attn_LR = attn_LRs[interaction].tocoo()
 
-        exists_mask = np.array([check_edge_in_adj(st, ed, sts, eds) for st, ed in zip(attn_LR.row, attn_LR.col)])
+        exists_mask = np.array(
+            [check_edge_in_adj(st, ed, sts, eds) for st, ed in zip(attn_LR.row, attn_LR.col)]
+        )
 
         if len(exists_mask) == 0:
             none_interactions.append(interaction)
@@ -375,7 +492,11 @@ def replace_attn_LRs(attn_LRs, y, norm=False): # Notion: it is possible to find 
                 new_data = (np.array(new_data) - min_val) / (max_val - min_val)
             else: # if all the values of edges are the same, set them one
                 new_data = np.ones_like(np.array(new_data))
-        new_dict[interaction] = sp.coo_matrix((new_data, (attn_LR.row, attn_LR.col)), shape=attn_LR.shape, dtype=attn_LR.dtype)
+        new_dict[interaction] = sp.coo_matrix(
+            (new_data, (attn_LR.row, attn_LR.col)), 
+            shape=attn_LR.shape, 
+            dtype=attn_LR.dtype
+        )
     print(f"#Interaction without edges after replacing={len(none_interactions_after_replace)}")
     return new_dict              
 
@@ -445,15 +566,29 @@ def get_feature(adata, deconvolution=False):
     adata.obsm['feat'] = feat
     adata.obsm['feat_a'] = feat_a    
 
-def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=5, vis=False, eval=False, resolution=None): # TODO: add region col name
-    data_folder = meta_folder +'/'
+def ada_get_cell_type_aware_adj(
+        X, 
+        adj_0, 
+        seed, 
+        bi_type, 
+        coords, 
+        meta_folder, 
+        region_col_name,
+        n=5, 
+        vis=False, 
+        eval=False, 
+        resolution=None
+):
+    data_folder = meta_folder
     if resolution != None:
-        if osp.exists(data_folder + f'pre-cluster_adj_reso={resolution}.pkl'):
-            print(f">>> Cache exisits: {data_folder + f'pre_cluster_adj_reso={resolution}.pkl'}")
-            with open(data_folder + f'pre-cluster_adj_reso={resolution}.pkl', 'rb') as file:
+        if osp.exists(osp.join(data_folder, f'pre-cluster_adj_reso={resolution}.pkl')):
+            print(
+                f">>> Cache exisits: {osp.join(data_folder, f'pre-cluster_adj_reso={resolution}.pkl')}"
+            )
+            with open(osp.join(data_folder, f'pre-cluster_adj_reso={resolution}.pkl'), 'rb') as file:
                 prune_G = pickle.load(file)
         else:
-            cell_types = pd.read_csv(data_folder + 'cell_types.csv').iloc[:, 0]
+            cell_types = pd.read_csv(osp.join(data_folder, 'cell_types.csv')).iloc[:, 0]
             type_id_list = cell_types[cell_types == bi_type].index.to_list()
 
             adata = ad.AnnData(X[type_id_list])
@@ -476,27 +611,52 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
                 n_clusters = max(cluster_labels) + 1 # start from 0
                 print(f'{n_clusters} clusters in drawing...')
                 txt_lines = [ [idx, x] for idx, x in zip(type_id_list, cluster_labels) ]
-                np.savetxt(data_folder + f"pre-cluster_{bi_type_name}_types_reso={resolution}.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
+                np.savetxt(
+                    osp.join(data_folder, f"pre-cluster_{bi_type_name}_types_reso={resolution}.txt"), 
+                    np.array(txt_lines), 
+                    fmt='%3d', 
+                    delimiter='\t'
+                )
 
-                sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cluster_labels, cmap='rainbow')
+                sc_cluster = plt.scatter(
+                    x=coordinates[:, 0], 
+                    y=-coordinates[:, 1], 
+                    s=5, 
+                    c=cluster_labels, 
+                    cmap='rainbow'
+                )
                 if n_clusters <= 3:
-                    plt.legend(*sc_cluster.legend_elements(), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                    plt.legend(
+                        *sc_cluster.legend_elements(), 
+                        bbox_to_anchor=(1, 0.5), 
+                        loc='center left', 
+                        prop={'size': 9}
+                    )
                 else:
-                    plt.legend(*sc_cluster.legend_elements(num=n_clusters), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                    plt.legend(
+                        *sc_cluster.legend_elements(num=n_clusters), 
+                        bbox_to_anchor=(1, 0.5), 
+                        loc='center left', 
+                        prop={'size': 9}
+                    )
                 plt.xticks([])
                 plt.yticks([])
                 plt.axis('scaled')
                 plt.title(f'{title}')
-                plt.savefig(data_folder + f'{fig_name}.png', dpi=400, bbox_inches='tight') 
+                plt.savefig(osp.join(data_folder, f'{fig_name}.png'), dpi=400, bbox_inches='tight') 
                 plt.clf()
 
             if eval:
                 labels_true_full = np.array(
-                    pd.read_csv(data_folder + 'regions.csv')['Region'].tolist()
+                    pd.read_csv(osp.join(data_folder, 'regions.csv'))[region_col_name].tolist()
                 )
                 labels_true = labels_true_full[type_id_list]
                 labels_pred = [label for idx, label in txt_lines]
-                eva(labels_true, labels_pred, out_file=osp.join(data_folder, f'pre-cluster_reso={resolution}.txt'))
+                eva(
+                    labels_true, 
+                    labels_pred, 
+                    out_file=osp.join(data_folder, f'pre-cluster_reso={resolution}.txt')
+                )
 
             print('>>> Pruning the graph...')
             if not sp.isspmatrix_coo(adj_0):
@@ -518,15 +678,15 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
             # print('>>> %d edges after pruning.' %Graph_df.shape[0])
 
             prune_G = sp.coo_matrix((np.ones(Graph_df.shape[0]), (Graph_df['St'], Graph_df['Ed'])))
-            with open(data_folder + f'pre-cluster_adj_reso={resolution}.pkl', 'wb') as file:
+            with open(osp.join(data_folder, f'pre-cluster_adj_reso={resolution}.pkl'), 'wb') as file:
                 pickle.dump(prune_G, file)
     else:
-        if osp.exists(data_folder + f'pre-cluster_adj_{n}.pkl'):
-            print(f">>> Cache exisits: {data_folder + f'pre_cluster_adj_{n}.pkl'}")
-            with open(data_folder + f'pre-cluster_adj_{n}.pkl', 'rb') as file:
+        if osp.exists(osp.join(data_folder, f'pre-cluster_adj_{n}.pkl')):
+            print(f">>> Cache exisits: {osp.join(data_folder, f'pre_cluster_adj_{n}.pkl')}")
+            with open(osp.join(data_folder, f'pre-cluster_adj_{n}.pkl'), 'rb') as file:
                 prune_G = pickle.load(file)
         else:
-            cell_types = pd.read_csv(data_folder + 'cell_types.csv').iloc[:, 0]
+            cell_types = pd.read_csv(osp.join(data_folder, 'cell_types.csv')).iloc[:, 0]
             type_id_list = cell_types[cell_types == bi_type].index.to_list() # Tid: type_id_list is used for slice, in other word, it contains the idx mapping:
             # For example, 0-th's idx -> 0, 1-th's idx -> 1, 2-th's idx -> 2
             # If we want to do the reverse mapping, just say, 0 -> 0-th's idx, 1 -> 1-th's idx, 2 -> 2-th's idx
@@ -551,7 +711,9 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
                 task = prog.add_task('>>> Getting type-aware Adj...', total=len(reso_lst_sorted))
                 for reso in reso_lst_sorted:
                     sc.tl.louvain(adata, resolution=reso, key_added=pre_labels, random_state=seed)
-                    ret_type_cnt = len(pd.DataFrame(adata.obs[pre_labels]).expression_louvain_label.unique())
+                    ret_type_cnt = len(
+                        pd.DataFrame(adata.obs[pre_labels]).expression_louvain_label.unique()
+                    )
                     # prog.console.print(f"ret_type_cnt={ret_type_cnt}")
                     if ret_type_cnt == n:
                         label = adata.obs[pre_labels]
@@ -573,23 +735,44 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
                 n_clusters = max(cluster_labels) + 1 # start from 0
                 print(f'{n_clusters} clusters in drawing...')
                 txt_lines = [ [idx, x] for idx, x in zip(type_id_list, cluster_labels) ]
-                np.savetxt(data_folder + f"pre-cluster_{bi_type_name}_types_{n}.txt", np.array(txt_lines), fmt='%3d', delimiter='\t')
+                np.savetxt(
+                    osp.join(data_folder, f"pre-cluster_{bi_type_name}_types_{n}.txt"), 
+                    np.array(txt_lines), 
+                    fmt='%3d', 
+                    delimiter='\t'
+                )
 
-                sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cluster_labels, cmap='rainbow')
+                sc_cluster = plt.scatter(
+                    x=coordinates[:, 0], 
+                    y=-coordinates[:, 1], 
+                    s=5, 
+                    c=cluster_labels, 
+                    cmap='rainbow'
+                )
                 if n_clusters <= 3:
-                    plt.legend(*sc_cluster.legend_elements(), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                    plt.legend(
+                        *sc_cluster.legend_elements(), 
+                        bbox_to_anchor=(1, 0.5), 
+                        loc='center left', 
+                        prop={'size': 9}
+                    )
                 else:
-                    plt.legend(*sc_cluster.legend_elements(num=n_clusters), bbox_to_anchor=(1, 0.5), loc='center left', prop={'size': 9})
+                    plt.legend(
+                        *sc_cluster.legend_elements(num=n_clusters), 
+                        bbox_to_anchor=(1, 0.5), 
+                        loc='center left', 
+                        prop={'size': 9}
+                    )
                 plt.xticks([])
                 plt.yticks([])
                 plt.axis('scaled')
                 plt.title(f'{title}')
-                plt.savefig(data_folder + f'{fig_name}.png', dpi=400, bbox_inches='tight') 
+                plt.savefig(osp.join(data_folder, f'{fig_name}.png'), dpi=400, bbox_inches='tight') 
                 plt.clf()
 
             if eval:
                 labels_true_full = np.array(
-                    pd.read_csv(data_folder + 'regions.csv')['Region'].tolist()
+                    pd.read_csv(osp.join(data_folder, 'regions.csv'))[region_col_name].tolist()
                 )
                 labels_true = labels_true_full[type_id_list]
                 labels_pred = [label for idx, label in txt_lines]
@@ -615,7 +798,7 @@ def ada_get_cell_type_aware_adj(X, adj_0, seed, bi_type, coords, meta_folder, n=
             # print('%d edges after pruning.' %Graph_df.shape[0])
 
             prune_G = sp.coo_matrix((np.ones(Graph_df.shape[0]), (Graph_df['St'], Graph_df['Ed'])))
-            with open(data_folder + f'pre-cluster_adj_{n}.pkl', 'wb') as file:
+            with open(osp.join(data_folder, f'pre-cluster_adj_{n}.pkl'), 'wb') as file:
                 pickle.dump(prune_G, file)
     return prune_G
 

@@ -31,7 +31,7 @@ def prepare_args(args):
     args.lr_cut = "FULL" # int or "FULL"
     args.h = 10
     args.n_input = 3000
-    args.num_epoch = 1000
+    args.num_epoch = 100
     args.learning_rate = 1e-3
 
     args.use_norm = False
@@ -101,7 +101,7 @@ def train(stcase_args):
                 adj_prime = adj
             else:
                 adj_prime = ada_get_cell_type_aware_adj(
-                    X, adj, args.seed, t, coords, meta_folder, 
+                    X, adj, args.seed, t, coords, meta_folder, args.region_col_name,
                     resolution=args.reso, vis=True, eval=False
                 )
             print(f"Edges in Adj for {t.replace('/', 'or')}:", len(adj.data))
@@ -164,20 +164,20 @@ def train(stcase_args):
                     eval=not args.wo_anno,
                     region_col_name=args.region_col_name
                 )
-                # draw_sub_type_map(
-                #     t, 
-                #     args.data_name, 
-                #     types_set, 
-                #     node_embed, 
-                #     method, 
-                #     args.time_stamp, 
-                #     args.seed, 
-                #     fixed_clus_count=args.n_clusters, 
-                #     cluster_method='mcluster', 
-                #     cluster_with_fix_reso=False,
-                #     eval=not args.wo_anno,
-                #     region_col_name=args.region_col_name
-                # )
+                draw_sub_type_map(
+                    t, 
+                    args.data_name, 
+                    types_set, 
+                    node_embed, 
+                    method, 
+                    args.time_stamp, 
+                    args.seed, 
+                    fixed_clus_count=args.n_clusters, 
+                    cluster_method='mclust',
+                    cluster_with_fix_reso=False,
+                    eval=not args.wo_anno,
+                    region_col_name=args.region_col_name
+                )
             else:
                 draw_sub_type_map(
                     t, 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "STACCI"
-version = "0.9.1"
+version = "0.9.2"
 description = "STACCI for STCase"
 authors = ["Lzcstan <lzcstan@outlook.com>"]
 readme = "README.md"
@@ -28,6 +28,7 @@ plotnine = "*"
 kneed = "*"
 pot = "*"
 rich = "*"
+rpy2 = "*"
 torch-geometric = "*"
 torch = "*"
 torch-cluster = "*"

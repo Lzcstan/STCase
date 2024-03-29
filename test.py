@@ -25,5 +25,4 @@ test_args = parser.parse_args()
 if __name__ == '__main__':
     # Test
     stcase_args = STACCI.prepare(test_args)
-    # args = prepare('../tests/', 'datasets/', 'T25_F1', 'T25_F1_1000hvg_ceco', 'SubClass', 'Region')
     STACCI.train(stcase_args)

@@ -60,7 +60,13 @@
    - Finally, install torch_geometric:
 
       `pip install torch_geometric`
-4. `pip install STACCI`
+4. Install `mclust` in R environment
+   Enter `R` in bash to enter the command line interactive interface and install `mclust` with this command:
+   `install.packages("mclust")`
+   During the installation process, select CRAN mirror: China (Beijing 3) [https].
+
+   After the installation is done, enter the command `library(mclust)` to load. If the `mclust` logo is displayed, it means the installation is successful. You can press `ctrl+d` to exit R.
+5. `pip install STACCI`
 
 # Usage Instructions
 
