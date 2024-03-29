@@ -61,6 +61,7 @@
 
       `pip install torch_geometric`
 4. Install `mclust` in R environment
+
    Enter `R` in bash to enter the command line interactive interface and install `mclust` with this command:
    `install.packages("mclust")`
    During the installation process, select CRAN mirror: China (Beijing 3) [https].
