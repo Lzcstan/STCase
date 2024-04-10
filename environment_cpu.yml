@@ -6,3 +6,6 @@ dependencies:
   - python=3.10.*
   - pip
   - r-base
+  - rpy2
+  - numpy=1.23.1
+  - distributed=2023.6.1

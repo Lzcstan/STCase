@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "STACCI"
-version = "0.9.3"
+version = "0.9.4"
 description = "STACCI for STCase"
 authors = ["Lzcstan <lzcstan@outlook.com>"]
 readme = "README.md"
@@ -10,7 +10,6 @@ packages = [
 
 [tool.poetry.dependencies]
 scipy = "*"
-numpy = "*"
 scikit-learn = "*"
 scikit-misc = "*"
 anndata = "*"
@@ -28,7 +27,6 @@ plotnine = "*"
 kneed = "*"
 pot = "*"
 rich = "*"
-rpy2 = "*"
 torch-geometric = "*"
 torch = "*"
 torch-cluster = "*"
