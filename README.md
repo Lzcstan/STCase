@@ -1,5 +1,8 @@
-# STACCI for STCase
-# Installation Instructions
+[![Stars](https://img.shields.io/github/stars/Lzcstan/STCase?logo=GitHub&color=yellow)](https://github.com/Lzcstan/STCase) [![PyPI](https://img.shields.io/pypi/v/STACCI.svg)](https://pypi.org/project/STACCI)
+# STACCI for STCase (**S**patial **T**ranscriptomics cell-cell **C**ommunication **a**nd **s**ubtype **e**xploration)
+STACCI (**S**patial **T**ranscriptomics **A**nalysis for **C**ell-**C**ell **I**nteractions)
+
+## Installation Instructions
 
 1. Clone the repository to your local machine and enter the repository in the command line interface.
 2. Use conda to create a new environment according to environment.yml
@@ -69,7 +72,7 @@
    After the installation is done, enter the command `library(mclust)` to load. If the `mclust` logo is displayed, it means the installation is successful. You can press `ctrl+d` to exit R.
 5. `pip install STACCI`
 
-# Usage Instructions
+## Usage Instructions
 
 After creating a new environment according to the installation instructions and installing the corresponding dependencies, place the .h5ad file of the dataset in the specified file structure, specifically, the desired file structure of the dataset is as follows:
 
@@ -115,3 +118,6 @@ STACCI/
         └── 10xv4_n0_v3/
             └── 10xv4_n0_v3_stringent_self.h5ad
 ```
+
+## Tutorial
+A consice read-the-doc tutorial can be found in [this website](https://stcase.readthedocs.io/en/latest/) (in progress).
