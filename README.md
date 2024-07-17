@@ -91,7 +91,7 @@ After setting up the file structure, execute the following command:
 python test.py --root {root} --ds-dir {dataset_path} --ds-name {dataset} --h5-name {h5_name} --target-types {target_type_list} --gpu {gpu_id} [--use-gpu] --n-nei {#neighborhood} --n-clusters {#sub-regions} [--alpha {alpha}] --label-col-name {label_column_name} --region-col-name {region_column_name}
 ```
 
-An example dataset can be download from the Link: [example h5ad file](https://pan.baidu.com/s/1tdiCZg1YoHvQj5iOwtNEHA) Password: 25d3. After completing the download, place the dataset file in the appropriate location.。The complete file structure of the repository including the example dataset should be as follows:
+An example dataset can be download from the Link: [example h5ad file](https://pan.baidu.com/s/1tdiCZg1YoHvQj5iOwtNEHA) Password: 25d3. After completing the download, place the dataset file in the appropriate location. The complete file structure of the repository including the example dataset should be as follows:
 ```bash
 STACCI/
 ├── README.md
