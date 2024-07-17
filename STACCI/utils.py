@@ -274,7 +274,7 @@ def draw_sub_type_map(
                     [idx, int(x)] for idx, x in zip(type_id_list, cell_cluster_type_list)
                 ]
                 np.savetxt(
-                    osp.join(outdir, f"mclust_fixed_n_{t.replace('/', 'or')}_types.txt"), 
+                    osp.join(outdir, f"mclust_fixed_n={fixed_clus_count}_{t.replace('/', 'or')}_types.txt"), 
                     np.array(txt_lines), 
                     fmt='%3d', 
                     delimiter='\t'
@@ -306,7 +306,7 @@ def draw_sub_type_map(
                 plt.axis('scaled')
                 plt.title(f'{title}')
                 plt.savefig(
-                    osp.join(outdir, f"mclust_fixed_n_spatial_{t.replace('/', 'or')}.png"), 
+                    osp.join(outdir, f"mclust_fixed_n={fixed_clus_count}_spatial_{t.replace('/', 'or')}.png"), 
                     dpi=400, 
                     bbox_inches='tight'
                 ) 

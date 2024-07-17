@@ -8,7 +8,15 @@ from scipy.stats import hypergeom
 
 ## A. inflection point finding
 def Inflection_point_finding(adata,  col='weight', vis=False):
-    df = adata.uns['LRP_weight']
+    # df = adata.uns['LRP_weight']
+    if isinstance(adata, str):
+        df = pd.read_csv(adata)
+        data = df[col].values
+    elif isinstance(adata, np.ndarray):
+        data = adata
+    else:
+        df = adata
+        data = df[col].values
     data = df[col].values
     data_idx = np.arange(len(data))
     kneedle = KneeLocator(data_idx,

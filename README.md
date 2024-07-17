@@ -69,10 +69,10 @@ STACCI (**S**patial **T**ranscriptomics **A**nalysis for **C**ell-**C**ell **I**
    `install.packages("mclust")`
    During the installation process, select CRAN mirror: China (Beijing 3) [https].
 
-   After the installation is done, enter the command `library(mclust)` to load. If the `mclust` logo is displayed, it means the installation is successful. You can press `ctrl+d` to exit R.
+   After the installation is done, enter the command `library(mclust)` to load. If the `mclust` logo is displayed, it means the installation is successful. You can press `Ctrl+d` to exit R.
 5. `pip install STACCI`
 
-## Usage Instructions
+## Usage Instructions and Example Dataset
 
 After creating a new environment according to the installation instructions and installing the corresponding dependencies, place the .h5ad file of the dataset in the specified file structure, specifically, the desired file structure of the dataset is as follows:
 
@@ -91,14 +91,7 @@ After setting up the file structure, execute the following command:
 python test.py --root {root} --ds-dir {dataset_path} --ds-name {dataset} --h5-name {h5_name} --target-types {target_type_list} --gpu {gpu_id} [--use-gpu] --n-nei {#neighborhood} --n-clusters {#sub-regions} [--alpha {alpha}] --label-col-name {label_column_name} --region-col-name {region_column_name}
 ```
 
-An example command is:
-
-```bash
-python test.py --root ./tests/ --ds-dir datasets/ --ds-name 10xv4_n0_v3 --h5-name 10xv4_n0_v3_stringent_self --target-types Tumor_major --gpu 1 --use-gpu --n-nei 12 --n-clusters 4 --alpha 0.75 --label-col-name cell_type --region-col-name Region
-```
-
-The complete file structure of the repository including the example dataset should be as follows:
-
+An example dataset can be download from the Link: [example h5ad file](https://pan.baidu.com/s/1tdiCZg1YoHvQj5iOwtNEHA) Password: 25d3. After completing the download, place the dataset file in the appropriate location.。The complete file structure of the repository including the example dataset should be as follows:
 ```bash
 STACCI/
 ├── README.md
@@ -115,8 +108,13 @@ STACCI/
 │   └── utils.py
 └── tests/
     └── datasets/
-        └── 10xv4_n0_v3/
-            └── 10xv4_n0_v3_stringent_self.h5ad
+        └── NC_OSCC_s1/
+            └── s1_nohvg_stringent.h5ad
+```
+
+And the corresponding command is:
+```bash
+python test.py --root ./tests/ --ds-dir datasets/ --ds-name NC_OSCC_s1 --h5-name s1_nohvg_stringent --target-types SCC --gpu 1 --use-gpu --n-nei 6 --n-clusters 3 --alpha 0.25 --label-col-name cell_type --region-col-name cluster_annotations
 ```
 
 ## Tutorial

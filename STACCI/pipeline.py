@@ -147,7 +147,6 @@ def train(stcase_args):
             lr_weight_df.to_csv(osp.join(result_path, f'lr_weight.csv'))
 
             print(">>> Drawing map")
-
             node_embed = np.load(osp.join(args.embedding_data_path, 'spot_embed.npy'))
 
             if args.n_clusters != -1:

@@ -199,6 +199,7 @@ def generate_data(args):
     if not osp.exists(generated_data_fold):
         os.makedirs(generated_data_fold)
     adata_h5ad = sc.read_h5ad(osp.join(data_fold, f'{args.h5_name}.h5ad'))
+    print(f'Input ST data: {adata_h5ad}')
 
     adata = adata_h5ad.copy()
     adata.var = adata.var.drop('highly_variable', axis=1) if 'highly_variable' in adata.var.keys() else adata.var
@@ -223,6 +224,7 @@ def generate_data(args):
         print("Choose to sub-cluster without ground-truth.")
     else:
         print("Sub-clustering region ground-truth not found!")
+        raise ValueError(f"Column '{args.region_col_name}' does not exist in the h5ad data. Please check the sub-clustering label column name.")
 
     np.save(osp.join(generated_data_fold, 'features.npy'), features)
     np.save(osp.join(generated_data_fold, 'coordinates.npy'), coordinates)

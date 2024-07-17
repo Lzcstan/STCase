@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "STACCI"
-version = "0.9.5"
+version = "0.9.6"
 description = "STACCI for STCase"
 authors = ["Lzcstan <lzcstan@outlook.com>"]
 readme = "README.md"
@@ -9,6 +9,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
+ipykernel = "*"
 scipy = "*"
 scikit-learn = "*"
 scikit-misc = "*"
