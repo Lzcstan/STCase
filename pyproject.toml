@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "STCase"
-version = "0.9.7"
+version = "1.0.0"
 description = "Spatial Transcriptomics cell-cell Communication and subtype exploration"
 authors = ["Lzcstan <lzcstan@outlook.com>"]
 readme = "README.md"
@@ -43,3 +43,5 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.urls]
 repository = "https://github.com/Lzcstan/STCase"
+homepage = "https://stcase.readthedocs.io"
+documentation = "https://stcase.readthedocs.io/en/latest/tutorial/index.html"
