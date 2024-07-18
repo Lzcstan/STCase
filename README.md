@@ -1,6 +1,6 @@
-[![Stars](https://img.shields.io/github/stars/Lzcstan/STCase?logo=GitHub&color=yellow)](https://github.com/Lzcstan/STCase) [![PyPI](https://img.shields.io/pypi/v/STACCI.svg)](https://pypi.org/project/STACCI)
-# STACCI for STCase (**S**patial **T**ranscriptomics cell-cell **C**ommunication **a**nd **s**ubtype **e**xploration)
-STACCI (**S**patial **T**ranscriptomics **A**nalysis for **C**ell-**C**ell **I**nteractions)
+[![Stars](https://img.shields.io/github/stars/Lzcstan/STCase?logo=GitHub&color=yellow)](https://github.com/Lzcstan/STCase) [![PyPI](https://img.shields.io/pypi/v/STCase.svg)](https://pypi.org/project/STCase)
+# STCase (**S**patial **T**ranscriptomics cell-cell **C**ommunication **a**nd **s**ubtype **e**xploration)
+STCase is a tool for accurately inferring CCC events at the niche level. Unlike previous methods, STCase identifies CCC events at the single-cell/spot level and performs niche-based subclustering to uncover underestimated niche-specific CCC events. We evaluated the performance of STCase from various perspectives and found that it exhibits good robustness, accuracy and sensitivity.
 
 ## Installation Instructions
 
@@ -70,7 +70,7 @@ STACCI (**S**patial **T**ranscriptomics **A**nalysis for **C**ell-**C**ell **I**
    During the installation process, select CRAN mirror: China (Beijing 3) [https].
 
    After the installation is done, enter the command `library(mclust)` to load. If the `mclust` logo is displayed, it means the installation is successful. You can press `Ctrl+d` to exit R.
-5. `pip install STACCI`
+5. `pip install STCase`
 
 ## Usage Instructions and Example Dataset
 
@@ -93,13 +93,13 @@ python test.py --root {root} --ds-dir {dataset_path} --ds-name {dataset} --h5-na
 
 An example dataset can be download from the Link: [example h5ad file](https://pan.baidu.com/s/1tdiCZg1YoHvQj5iOwtNEHA) Password: 25d3. After completing the download, place the dataset file in the appropriate location. The complete file structure of the repository including the example dataset should be as follows:
 ```bash
-STACCI/
+STCase/
 ├── README.md
 ├── pyproject.toml
 ├── environment.yml
 ├── .gitignore
 ├── test.py
-├── STACCI/
+├── STCase/
 │   ├── __init__.py
 │   ├── data_handler.py
 │   ├── model.py

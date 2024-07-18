@@ -1,4 +1,4 @@
-import STACCI
+import STCase
 import argparse
 
 
@@ -24,5 +24,5 @@ test_args = parser.parse_args()
 
 if __name__ == '__main__':
     # Test
-    stcase_args = STACCI.prepare(test_args)
-    STACCI.train(stcase_args)
+    stcase_args = STCase.prepare(test_args)
+    STCase.train(stcase_args)

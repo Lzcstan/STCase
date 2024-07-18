@@ -1,5 +1,5 @@
 """
-The STACCI package.
+The STCase package.
 """
 
 from .pipeline import prepare, train

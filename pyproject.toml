@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "STACCI"
-version = "0.9.6"
-description = "STACCI for STCase"
+name = "STCase"
+version = "0.9.7"
+description = "Spatial Transcriptomics cell-cell Communication and subtype exploration"
 authors = ["Lzcstan <lzcstan@outlook.com>"]
 readme = "README.md"
 packages = [
-  { include = "STACCI", from = "." },
+  { include = "STCase", from = "." },
 ]
 
 [tool.poetry.dependencies]
@@ -42,4 +42,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.urls]
-repository = "https://github.com/Lzcstan/STACCI"
+repository = "https://github.com/Lzcstan/STCase"

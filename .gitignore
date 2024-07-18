@@ -23,3 +23,5 @@ exp/
 # Ignore IDE and editor specific files
 .idea/
 .vscode/
+
+test.ipynb

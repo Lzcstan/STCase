@@ -168,14 +168,14 @@ def draw_sub_type_map(
                         adata, 
                         n_neighbors=20, 
                         n_pcs=0, 
-                        key_added='STACCI', 
+                        key_added='STCase', 
                         random_state=seed
                     )
                     for res in sorted(list(np.arange(0.02, 5, increment)), reverse=True):
                         sc.tl.leiden(
                             adata, 
                             resolution=res, 
-                            neighbors_key='STACCI', 
+                            neighbors_key='STCase', 
                             random_state=seed
                         )
                         count_unique_leiden = len(pd.DataFrame(adata.obs['leiden']).leiden.unique())
@@ -186,11 +186,11 @@ def draw_sub_type_map(
                     sc.tl.leiden(
                         adata, 
                         key_added="leiden", 
-                        neighbors_key='STACCI', 
+                        neighbors_key='STCase', 
                         resolution=eval_resolution, 
                         random_state=seed
                     )
-                    sc.tl.umap(adata, neighbors_key='STACCI', random_state=seed)
+                    sc.tl.umap(adata, neighbors_key='STCase', random_state=seed)
                     cluster_labels = np.array(adata.obs['leiden'])
                     txt_lines = [ [idx, int(x)] for idx, x in zip(type_id_list, cluster_labels) ]
                     np.savetxt(
@@ -205,7 +205,7 @@ def draw_sub_type_map(
                     draw_default_outdir(
                         generated_data_fold, 
                         outdir, 
-                        f"STACCI_{t}", 
+                        f"STCase_{t}", 
                         f"fixed_n={fixed_clus_count}_spatial_{t.replace('/', 'or')}", 
                         f"fixed_n={fixed_clus_count}_{t.replace('/', 'or')}_types.txt"
                     )
@@ -221,18 +221,18 @@ def draw_sub_type_map(
                         adata, 
                         n_neighbors=20, 
                         n_pcs=0, 
-                        key_added='STACCI', 
+                        key_added='STCase', 
                         random_state=seed
                     )
                     eval_resolution = 1 if resolution == None else resolution
                     sc.tl.leiden(
                         adata, 
                         key_added="leiden", 
-                        neighbors_key='STACCI', 
+                        neighbors_key='STCase', 
                         resolution=eval_resolution, 
                         random_state=seed
                     )
-                    sc.tl.umap(adata, neighbors_key='STACCI', random_state=seed)
+                    sc.tl.umap(adata, neighbors_key='STCase', random_state=seed)
                     cluster_labels = np.array(adata.obs['leiden'])
                     txt_lines = [ [idx, int(x)] for idx, x in zip(type_id_list, cluster_labels) ]
                     np.savetxt(
@@ -247,7 +247,7 @@ def draw_sub_type_map(
                     draw_default_outdir(
                         generated_data_fold, 
                         outdir, 
-                        f"STACCI_{t}",
+                        f"STCase_{t}",
                         f"fixed_reso={eval_resolution}_spatial_{t.replace('/', 'or')}", 
                         f"fixed_reso={eval_resolution}_{t.replace('/', 'or')}_types.txt"
                     )
@@ -265,7 +265,7 @@ def draw_sub_type_map(
                 ret = clustering(emb, n_clusters=fixed_clus_count)
                 cell_cluster_type_list = ret - 1
                 n_clusters = max(ret)
-                title = f"STACCI_{t}_mclust"
+                title = f"STCase_{t}_mclust"
                 coordinates = np.load(
                     osp.join(generated_data_fold, 'coordinates.npy')
                 )[type_id_list]
