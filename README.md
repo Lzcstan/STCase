@@ -1,4 +1,4 @@
-[![Stars](https://img.shields.io/github/stars/Lzcstan/STCase?logo=GitHub&color=yellow)](https://github.com/Lzcstan/STCase) [![PyPI](https://img.shields.io/pypi/v/STCase.svg)](https://pypi.org/project/STCase)
+[![Stars](https://img.shields.io/github/stars/STCaser/STCase?logo=GitHub&color=yellow)](https://github.com/STCaser/STCase) [![PyPI](https://img.shields.io/pypi/v/STCase.svg)](https://pypi.org/project/STCase)
 # STCase (**S**patial **T**ranscriptomics cell-cell **C**ommunication **a**nd **s**ubtype **e**xploration)
 STCase is a tool for accurately inferring CCC events at the niche level. Unlike previous methods, STCase identifies CCC events at the single-cell/spot level and performs niche-based subclustering to uncover underestimated niche-specific CCC events. We evaluated the performance of STCase from various perspectives and found that it exhibits good robustness, accuracy and sensitivity.
 
@@ -8,7 +8,7 @@ A consice read-the-doc tutorial can be found in [this website](https://stcase.re
 
 An example dataset can be download from [Google Drive ](https://drive.google.com/file/d/1TQohsxIFonJxQkroECHR0EqwPTGX2o6S/view?usp=sharing) or [the link for CN user](https://pan.baidu.com/s/1tdiCZg1YoHvQj5iOwtNEHA) (Password: 25d3).
 
-The files necessary to run pySCENIC can be downloaded from [Google Drive ](https://drive.google.com/file/d/1TQohsxIFonJxQkroECHR0EqwPTGX2o6S/view?usp=sharing) or [the link for CN user](https://pan.baidu.com/s/1tdiCZg1YoHvQj5iOwtNEHA) (Password: 25d3).
+The files necessary to run pySCENIC can be downloaded from [Google Drive ](https://drive.google.com/drive/folders/1aiExvHhKfuin4uf41o01ALZjlPqyzkJn?usp=sharing) or [the link for CN user](https://pan.baidu.com/s/1EZ2jo9PGtZfVm0t-BqMXeQ) (Password: fzkx).
 
 
 ## Installation Instructions
@@ -84,7 +84,7 @@ The files necessary to run pySCENIC can be downloaded from [Google Drive ](https
 
 ## Usage Instructions and Example Dataset
 
-**This section provides instructions and an example dataset for training and using GNN. For CCCI scores calculation and visulization, please refer to the tutorial above.**
+**This section provides instructions and an example dataset for training and using GNN. For CCC scores calculation and visulization, please refer to the tutorial above.**
 
 After creating a new environment according to the installation instructions and installing the corresponding dependencies, place the .h5ad file of the dataset in the specified file structure, specifically, the desired file structure of the dataset is as follows:
 
@@ -126,6 +126,32 @@ STCase/
 
 And the corresponding command is:
 ```bash
-python test.py --root ./tests/ --ds-dir datasets/ --ds-name NC_OSCC_s1 --h5-name s1_nohvg_stringent --target-types SCC --gpu 1 --use-gpu --n-nei 6 --n-clusters 3 --alpha 0.25 --label-col-name cell_type --region-col-name cluster_annotations
+python test.py --root ./tests/ --ds-dir datasets/ --ds-name NC_OSCC_s1 --h5-name s1_nohvg_stringent --target-types SCC --gpu 1 --use-gpu --n-nei 6 --n-clusters 3 --alpha 0.25 --label-col-name cell_type --wo-anno
 ```
 (~1 hour with GPU and ~20 hours without GPU)
+
+### Output files
+```bash
+SCC_alpha=0.25_reso=None_cut=FULL_hvg=3000_nei=6
+├── fixed_n=3_SCC_types.txt
+├── fixed_n=3_spatial_SCC.png
+├── leiden.txt
+├── lr_weight.csv
+├── lr_weight_dict.pkl
+├── mclust_fixed_n=3_SCC_types.txt
+├── mclust_fixed_n=3_spatial_SCC.png
+└── mclust.txt
+```
+**fixed_n=3_SCC_types.txt:** A file that stores the clustering results via the leiden method.
+
+**fixed_n=3_spatial_SCC.png:** Spatial visualization of the clustering results by leiden method.
+
+**lr_weight.csv & lr_weight_dict.pkl:** Those file stores the weight of each LRP in the GNN.
+
+**mclust_fixed_n=3_SCC_types.txt:** A file that stores the clustering results via the mclust method.
+
+**mclust_fixed_n=3_spatial_SCC.png:** Spatial visualization of the clustering results by mclust method.
+
+**leiden.txt:** A file of the results of the comparison between the groundtruth and the STCase results (leiden method) when setting the region-col-name parameter. If the wo-anno parameter is set, there is no result output.
+
+**mclust.txt:** A file of the results of the comparison between the groundtruth and the STCase results (mclust method) when setting the region-col-name parameter. If the wo-anno parameter is set, there is no result output.
